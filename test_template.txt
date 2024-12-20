@@ -1,0 +1,21 @@
+import { describe, expect, test } from '@jest/globals';
+
+// imports of API-specific classes
+{{#param_class}}
+import { {{.}} } from '../../{{.}}';
+{{/param_class}}
+
+// client path from spec
+const BASE_PATH = 'http://localhost:3001/api/{{api_title_lower}}/{{api_version}}';
+
+const client = {{api_title}}Client(BASE_PATH);
+
+describe('{{api_title}} {{api_version}}', () => {
+{{#test_data}}
+    test('{{endpoint_summary}}', () => {
+        const params: {{endpoint_params}} = {};
+        const resp = await client.{{endpoint_operation}}(params);
+        expect(resp.status).toBe(200);
+    });
+{{/test_data}}
+});
