@@ -13,7 +13,7 @@ const client = {{api_title}}Client(BASE_PATH);
 describe('{{api_title}} {{api_version}}', () => {
 {{#test_data}}
     test('{{endpoint_summary}}', () => {
-        const params: {{endpoint_params}} = {};
+        const params: {{endpoint_params}} = { {{endpoint_param_values}} };
         const resp = await client.{{endpoint_operation}}(params);
         expect(resp.status).toBe(200);
     });

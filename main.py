@@ -39,6 +39,7 @@ class TestTarget(object):
     response_schema: str
     response_schema_class: str
     parameter_schema: str
+    parameter_values: str
 
 
 def get_spec(url) -> dict:
@@ -86,6 +87,47 @@ def download_specfile(url: str):
         raise SpecDownloadError
 
 
+class EndpointParameter(object):
+    valid_types = ['number', 'string', 'boolean', 'array', 'object']
+
+    def __init__(self, name: str, type: str, required: bool):
+        self.name = name
+        self.type = type
+        self.required = required
+
+
+def get_parameters_from_ref(full_spec: dict, ref: str) -> list[EndpointParameter]:
+    """Returns a list of required parameters for use with this endpoint based on info from the provided $ref"""
+    split_ref = ref.split('/')
+    split_ref.remove('#')
+    cur = full_spec
+    for tier in split_ref:
+        cur = cur.get(tier)
+    result = []
+    for required_prop in cur['required']:
+        prop_type = cur['properties'][required_prop]['type']
+        result.append(EndpointParameter(required_prop, prop_type, True))
+    return result
+
+
+def build_param_values(parameters: list[EndpointParameter]) -> str:
+    """Takes a list of EndpointParameter objects and converts it to a parameter string that can be
+    substituted into the template for the specific test target."""
+    result = []
+    for endpt_param in parameters:
+        if endpt_param.type == 'array':
+            result.append(f"{endpt_param.name}: [],\n")
+        elif endpt_param.type == 'boolean':
+            result.append(f"{endpt_param.name}: true,\n")
+        elif endpt_param.type == 'string':
+            result.append(f"{endpt_param.name}: \"\",\n")
+        elif endpt_param.type == 'number':
+            result.append(f"{endpt_param.name}: 0,\n")
+        elif endpt_param.type == 'object':
+            result.append(f"{endpt_param.name}: null\n")
+    return "".join(result)
+
+
 if __name__ == "__main__":
 
     example_spec = "https://console.redhat.com/api/notifications/v2/openapi.json"
@@ -126,7 +168,18 @@ if __name__ == "__main__":
                 response_schema = ""
                 response_schema_class = ""
 
+            try:
+                parameter_schema = lookup_base["requestBody"]["content"]['application/json']['schema']['$ref']
+            except KeyError as ke:
+                parameter_schema = ""
+
+            try:
+                parameters = get_parameters_from_ref(spec, parameter_schema)
+            except:
+                parameters = []
+
             request_class = convert_to_classname(lookup_base["operationId"])
+            param_values = build_param_values(parameters)
 
             test_target = TestTarget(
                 url_path=path,
@@ -139,6 +192,7 @@ if __name__ == "__main__":
                 response_schema=response_schema,
                 response_schema_class=response_schema_class,
                 parameter_schema="",
+                parameter_values=param_values
             )
             test_targets.append(test_target)
 
@@ -146,6 +200,7 @@ if __name__ == "__main__":
     import_classes = build_imports(api_prefix, test_targets)
     # print(import_classes)
 
+    # Render the template with the data extracted from the JSON spec
     render_data = {
         "api_title": api_title,
         "api_title_lower": api_title.lower(),
@@ -156,6 +211,7 @@ if __name__ == "__main__":
                 "endpoint_summary": test_target.summary,
                 "endpoint_operation": test_target.request_class,
                 "endpoint_params": f"{test_target.request_class}Params",
+                "endpoint_param_values": test_target.parameter_values
             }
             for test_target in test_targets
         ],
