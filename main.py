@@ -1,11 +1,12 @@
 import json
+import os
 from dataclasses import dataclass
 import chevron
 import requests
 
 
 def render_template(file_path, template_data: dict, dest_file=None):
-    """Substitutes the data into the mustache template and produce a test file"""
+    """Substitutes the data into the mustache template and produces a test file"""
     with open(file_path, "r") as f:
         rendered_template = chevron.render(f, template_data)
         if dest_file:
@@ -47,6 +48,7 @@ def get_spec(url) -> dict:
 
 
 def build_imports(import_class_prefix: str, test_target_data: list[TestTarget]) -> list:
+    """Builds the data used to populate the imports in the template"""
     # *Response classes
     import_names = [
         f"{import_class_prefix}{x.response_schema_class}"
@@ -72,12 +74,30 @@ def build_imports(import_class_prefix: str, test_target_data: list[TestTarget]) 
     return import_names
 
 
-if __name__ == "__main__":
-    example_spec = "https://console.redhat.com/api/notifications/v2/openapi.json"
+class SpecDownloadError(Exception):
+    pass
+
+
+def download_specfile(url: str):
     try:
-        spec = get_spec(example_spec)
+        return get_spec(url)
     except Exception:
         print("Something went wrong while downloading spec from URL")
+        raise SpecDownloadError
+
+
+if __name__ == "__main__":
+
+    example_spec = "https://console.redhat.com/api/notifications/v2/openapi.json"
+    try:
+        spec = download_specfile(example_spec)
+    except SpecDownloadError as e:
+        print(f"Error downloading spec from {example_spec}")
+        exit(1)
+
+    template_file = "test_template.mustache"
+    if not os.path.isfile(template_file):
+        print(f"{template_file} is not a file")
         exit(1)
 
     api_title = spec["info"]["title"]
@@ -131,10 +151,13 @@ if __name__ == "__main__":
         "api_title_lower": api_title.lower(),
         "api_version": api_version,
         "param_class": import_classes,
-        "test_data":
-            [{"endpoint_summary": test_target.summary,
-              "endpoint_operation": test_target.request_class,
-              "endpoint_params": f"{test_target.request_class}Params"} for test_target in test_targets]
-
+        "test_data": [
+            {
+                "endpoint_summary": test_target.summary,
+                "endpoint_operation": test_target.request_class,
+                "endpoint_params": f"{test_target.request_class}Params",
+            }
+            for test_target in test_targets
+        ],
     }
-    render_template("test_template.txt", render_data)
+    render_template(template_file, render_data)
