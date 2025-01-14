@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from dataclasses import dataclass
@@ -10,8 +11,8 @@ def render_template(file_path, template_data: dict, dest_file=None):
     with open(file_path, "r") as f:
         rendered_template = chevron.render(f, template_data)
         if dest_file:
-            with open(dest_file, "w") as output_file:
-                json.dump(rendered_template, output_file)
+            with open(dest_file, "wt") as output_file:
+                output_file.write(rendered_template)
         else:
             # No file? -> stdout
             print(rendered_template)
@@ -97,7 +98,7 @@ class URLEmbeddedParameter(object):
 
 @dataclass
 class RequestBodyParameter(object):
-    valid_types = ['number', 'string', 'boolean', 'array', 'object']
+    valid_types = ["number", "string", "boolean", "array", "object"]
     name: str
     type: str | None
     ref: str | None
@@ -110,19 +111,21 @@ def get_url_embedded_parameters(full_spec: dict, spec_path: str, spec_verb: str)
 
 
 def get_request_body_parameters(full_spec: dict, spec_path: str, spec_verb: str):
-    """ Gets the list of request body parameters from the spec """
+    """Gets the list of request body parameters from the spec"""
     pass
 
 
 def copy_parameter_data(name: str, parameter_data: dict) -> RequestBodyParameter:
-    """ Takes request body parameter from the spec and copies it into a RequestBodyParameter object"""
-    type = parameter_data['type']
-    ref = parameter_data.get('ref', None)
-    aggregate_info = parameter_data.get('items', None) if type == 'array' else None
+    """Takes request body parameter from the spec and copies it into a RequestBodyParameter object"""
+    type = parameter_data["type"]
+    ref = parameter_data.get("ref", None)
+    aggregate_info = parameter_data.get("items", None) if type == "array" else None
     return RequestBodyParameter(name, type, ref, aggregate_info)
 
 
-def get_request_body_parameters_from_ref(full_spec: dict, ref: str) -> list[RequestBodyParameter]:
+def get_request_body_parameters_from_ref(
+    full_spec: dict, ref: str
+) -> list[RequestBodyParameter]:
     """
     Returns a list of required parameters for use with this endpoint based on info from the provided $ref
 
@@ -131,22 +134,24 @@ def get_request_body_parameters_from_ref(full_spec: dict, ref: str) -> list[Requ
 
     Note: Only returns parameters that are required at the moment.
     """
-    split_ref = ref.split('/')
-    split_ref.remove('#')
+    split_ref = ref.split("/")
+    split_ref.remove("#")
     cur = full_spec
     for tier in split_ref:
         cur = cur.get(tier)
     result = []
-    has_required = cur.get('required', False)
+    has_required = cur.get("required", False)
     if has_required:
         # only required parameters
-        for required_prop in cur['required']:
-            param_data = copy_parameter_data(required_prop, cur['properties'][required_prop])
+        for required_prop in cur["required"]:
+            param_data = copy_parameter_data(
+                required_prop, cur["properties"][required_prop]
+            )
             result.append(param_data)
     else:
         # all parameters
-        for some_prop in cur['properties']:
-            param_data = copy_parameter_data(some_prop, cur['properties'][some_prop])
+        for some_prop in cur["properties"]:
+            param_data = copy_parameter_data(some_prop, cur["properties"][some_prop])
             result.append(param_data)
 
     return result
@@ -155,9 +160,9 @@ def get_request_body_parameters_from_ref(full_spec: dict, ref: str) -> list[Requ
 def camel_case(name: str):
     """Takes a string_like_this and convert to StringLikeThis"""
     result = ""
-    chunks = name.split('_')
+    chunks = name.split("_")
     for chunk in chunks:
-        result += chunk[0].upper() + chunk[1:len(chunk)]
+        result += chunk[0].upper() + chunk[1 : len(chunk)]
     return result
 
 
@@ -167,15 +172,15 @@ def build_param_values(parameters: list[RequestBodyParameter]) -> str:
     result = []
     for endpt_param in parameters:
         name = camel_case(endpt_param.name)
-        if endpt_param.type == 'array':
+        if endpt_param.type == "array":
             result.append(f"{name}: [],\n")
-        elif endpt_param.type == 'boolean':
+        elif endpt_param.type == "boolean":
             result.append(f"{name}: true,\n")
-        elif endpt_param.type == 'string':
-            result.append(f"{name}: \"\",\n")
-        elif endpt_param.type == 'number':
+        elif endpt_param.type == "string":
+            result.append(f'{name}: "",\n')
+        elif endpt_param.type == "number":
             result.append(f"{name}: 0,\n")
-        elif endpt_param.type == 'object':
+        elif endpt_param.type == "object":
             result.append(f"{name}: null\n")
     return "".join(result)
 
@@ -183,11 +188,11 @@ def build_param_values(parameters: list[RequestBodyParameter]) -> str:
 def build_test_target(path_value, verb_value) -> TestTarget:
     lookup_base = spec["paths"][path][verb]
     try:
-        request_schema = lookup_base["requestBody"]["content"][
-            "application/json"
-        ]["schema"]["$ref"]
+        request_schema = lookup_base["requestBody"]["content"]["application/json"][
+            "schema"
+        ]["$ref"]
         request_schema_class = request_schema.split("/")[-1]
-    except KeyError as ke:
+    except KeyError:
         request_schema = ""
         request_schema_class = ""
 
@@ -196,14 +201,15 @@ def build_test_target(path_value, verb_value) -> TestTarget:
             "application/json"
         ]["schema"]["$ref"]
         response_schema_class = response_schema.split("/")[-1]
-    except KeyError as ke:
-        # print(lookup_base['responses']['200'])
+    except KeyError:
         response_schema = ""
         response_schema_class = ""
 
     try:
-        parameter_schema = lookup_base["requestBody"]["content"]['application/json']['schema']['$ref']
-    except KeyError as ke:
+        parameter_schema = lookup_base["requestBody"]["content"]["application/json"][
+            "schema"
+        ]["$ref"]
+    except KeyError:
         parameter_schema = ""
 
     try:
@@ -225,18 +231,34 @@ def build_test_target(path_value, verb_value) -> TestTarget:
         response_schema=response_schema,
         response_schema_class=response_schema_class,
         parameter_schema="",
-        parameter_values=param_values
+        parameter_values=param_values,
     )
     return test_target
 
 
 if __name__ == "__main__":
 
-    example_spec = "https://console.redhat.com/api/notifications/v2/openapi.json"
+    parser = argparse.ArgumentParser(
+        prog="test-generator",
+        description="Generates test source for use in javascript-clients repo",
+        epilog="Never trust an initial query editor",
+    )
+
+    parser.add_argument(
+        "--spec_url", help="URL of the OpenAPI spec file in JSON format", required=True
+    )
+    parser.add_argument(
+        "--out_file", help="File to write the generated test source to", required=False
+    )
+
+    args = parser.parse_args()
+    spec_url = args.spec_url.strip("'")
+    out_file = args.out_file
+
     try:
-        spec = download_specfile(example_spec)
+        spec = download_specfile(spec_url)
     except SpecDownloadError as e:
-        print(f"Error downloading spec from {example_spec}")
+        print(f"Error downloading spec from {spec_url}")
         exit(1)
 
     template_file = "test_template.mustache"
@@ -268,9 +290,9 @@ if __name__ == "__main__":
                 "endpoint_summary": test_target.summary,
                 "endpoint_operation": test_target.request_class,
                 "endpoint_params": f"{test_target.request_class}Params",
-                "endpoint_param_values": test_target.parameter_values
+                "endpoint_param_values": test_target.parameter_values,
             }
             for test_target in test_targets
         ],
     }
-    render_template(template_file, render_data)
+    render_template(template_file, render_data, dest_file=out_file)
