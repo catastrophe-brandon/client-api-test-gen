@@ -29,3 +29,7 @@ def test_get_parameters_from_ref():
     }
     assert params[3].name == "display_name_not_null_and_blank"
     assert params[3].type == "boolean"
+
+
+def test_get_parameters_from_ref_including_dependent_objects():
+    """When a ref contains dependent objects, those objects need to be built as well."""

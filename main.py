@@ -47,7 +47,7 @@ class TestTarget(object):
 
 
 def get_spec(url) -> dict:
-    """Get the openapi spec from a url"""
+    """Get the openapi spec from an url"""
     resp = requests.get(url)
     return json.loads(resp.text)
 
@@ -94,6 +94,9 @@ def download_specfile(url: str):
 @dataclass
 class URLEmbeddedParameter(object):
     name: str
+    schema: str | None
+    type: str | None
+    required: bool
 
 
 @dataclass
@@ -105,13 +108,32 @@ class RequestBodyParameter(object):
     aggregate_info: dict | None
 
 
-def get_url_embedded_parameters(full_spec: dict, spec_path: str, spec_verb: str):
+def get_url_embedded_parameters(
+    full_spec: dict, spec_path: str, spec_verb: str
+) -> list[URLEmbeddedParameter]:
     """Gets the list of any url-embedded parameters from the spec"""
-    pass
+    result = []
+
+    parameters = full_spec["paths"][spec_path][spec_verb].get("parameters", None)
+    if parameters is None:
+        return result
+
+    for param in parameters:
+        if param.get("in", None) == "path":
+            result.append(
+                URLEmbeddedParameter(
+                    param.get("name"),
+                    param.get("schema", None),
+                    param.get("type", None),
+                    param.get("required"),
+                )
+            )
+    return result
 
 
 def get_request_body_parameters(full_spec: dict, spec_path: str, spec_verb: str):
     """Gets the list of request body parameters from the spec"""
+    lookup_reference = full_spec["paths"][spec_path][spec_verb]
     pass
 
 
@@ -140,19 +162,21 @@ def get_request_body_parameters_from_ref(
     for tier in split_ref:
         cur = cur.get(tier)
     result = []
+
     has_required = cur.get("required", False)
+
     if has_required:
         # only required parameters
-        for required_prop in cur["required"]:
-            param_data = copy_parameter_data(
-                required_prop, cur["properties"][required_prop]
-            )
-            result.append(param_data)
+        optional_or_required_params = cur["required"]
     else:
         # all parameters
-        for some_prop in cur["properties"]:
-            param_data = copy_parameter_data(some_prop, cur["properties"][some_prop])
-            result.append(param_data)
+        optional_or_required_params = cur["properties"]
+
+    for some_param in optional_or_required_params:
+        param_data = copy_parameter_data(
+            some_param, optional_or_required_params[some_param]
+        )
+        result.append(param_data)
 
     return result
 
@@ -185,18 +209,25 @@ def build_param_values(parameters: list[RequestBodyParameter]) -> str:
     return "".join(result)
 
 
-def build_test_target(path_value, verb_value) -> TestTarget:
-    lookup_base = spec["paths"][path][verb]
+def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> TestTarget:
+
+    lookup_base = full_spec["paths"][path_value][verb_value]
     try:
+        # If the request has a request body, gather the name as CamelCase for use later
         request_schema = lookup_base["requestBody"]["content"]["application/json"][
+            "schema"
+        ]["$ref"]
+        parameter_schema = lookup_base["requestBody"]["content"]["application/json"][
             "schema"
         ]["$ref"]
         request_schema_class = request_schema.split("/")[-1]
     except KeyError:
         request_schema = ""
         request_schema_class = ""
+        parameter_schema = ""
 
     try:
+        # If the request has a response body schema, gather that info
         response_schema = lookup_base["responses"]["200"]["content"][
             "application/json"
         ]["schema"]["$ref"]
@@ -205,16 +236,15 @@ def build_test_target(path_value, verb_value) -> TestTarget:
         response_schema = ""
         response_schema_class = ""
 
-    try:
-        parameter_schema = lookup_base["requestBody"]["content"]["application/json"][
-            "schema"
-        ]["$ref"]
-    except KeyError:
-        parameter_schema = ""
-
-    try:
-        parameters = get_request_body_parameters_from_ref(spec, parameter_schema)
-    except:
+    if parameter_schema != "":
+        try:
+            # if there's a request body ref, determine the parameters from the schema ref
+            parameters = get_request_body_parameters_from_ref(
+                full_spec, parameter_schema
+            )
+        except Exception:
+            parameters = []
+    else:
         parameters = []
 
     request_class = convert_operation_id_to_classname(lookup_base["operationId"])
@@ -230,7 +260,7 @@ def build_test_target(path_value, verb_value) -> TestTarget:
         request_schema_class=request_schema_class,
         response_schema=response_schema,
         response_schema_class=response_schema_class,
-        parameter_schema="",
+        parameter_schema=parameter_schema,
         parameter_values=param_values,
     )
     return test_target
@@ -240,7 +270,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         prog="test-generator",
-        description="Generates test source for use in javascript-clients repo",
+        description="Generates test source for use in the javascript-clients repo",
         epilog="Never trust an initial query editor",
     )
 
@@ -255,6 +285,10 @@ if __name__ == "__main__":
     spec_url = args.spec_url.strip("'")
     out_file = args.out_file
 
+    print(f"Spec url given was: {spec_url}")
+    print(f"Output file is: {out_file}")
+
+    print("Downloading spec ...")
     try:
         spec = download_specfile(spec_url)
     except SpecDownloadError as e:
@@ -274,11 +308,12 @@ if __name__ == "__main__":
     for path in spec["paths"]:
         verbs = list(spec["paths"][path].keys())
         for verb in verbs:
-            test_targets.append(build_test_target(path, verb))
+            test_targets.append(build_test_target(spec, path, verb))
 
     api_prefix = f"{api_title}{api_version.upper().rstrip('.0')}"
     import_classes = build_imports(api_prefix, test_targets)
 
+    print("Rendering the data into the template ...")
     # Render the template with the data extracted from the JSON spec
     render_data = {
         "api_title": api_title,
@@ -296,3 +331,4 @@ if __name__ == "__main__":
         ],
     }
     render_template(template_file, render_data, dest_file=out_file)
+    print(f"Success! Test source written to {out_file}")
