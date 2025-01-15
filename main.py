@@ -21,7 +21,7 @@ def render_template(file_path, template_data: dict, dest_file=None):
 def convert_operation_id_to_classname(name_from_json):
     """
     Removes any _ or $ and capitalizes name appropriately; for use in reformatting operationId
-    to use import statements
+    to use in JS import statements
     """
     underscore_idx = name_from_json.index("_")
     temp_str = list(name_from_json)
@@ -31,7 +31,8 @@ def convert_operation_id_to_classname(name_from_json):
 
 @dataclass
 class TestTarget(object):
-    """Represents an individual endpoint to be tested based on info taken from the spec"""
+    """Represents an individual endpoint to be tested based on info taken from the spec;
+    data for substitution into the template"""
 
     url_path: str
     verb: str
@@ -99,10 +100,13 @@ class URLEmbeddedParameter(object):
     required: bool
 
 
+# TODO: Make this an enum for future use?
+valid_types = ["number", "string", "boolean", "array", "object"]
+
+
 @dataclass
 class RequestBodyParameter(object):
-    valid_types = ["number", "string", "boolean", "array", "object"]
-    name: str
+    name: str | None
     type: str | None
     ref: str | None
     aggregate_info: dict | None
@@ -131,10 +135,34 @@ def get_url_embedded_parameters(
     return result
 
 
-def get_request_body_parameters(full_spec: dict, spec_path: str, spec_verb: str):
+def get_request_body_parameters(
+    full_spec: dict, spec_path: str, spec_verb: str
+) -> list[RequestBodyParameter]:
     """Gets the list of request body parameters from the spec"""
-    lookup_reference = full_spec["paths"][spec_path][spec_verb]
-    pass
+    has_req_body = (
+        full_spec["paths"][spec_path][spec_verb].get("requestBody", None) is not None
+    )
+    if not has_req_body:
+        return []
+
+    req_body_schema = full_spec["paths"][spec_path][spec_verb]["requestBody"][
+        "content"
+    ]["application/json"]["schema"]
+    # schema is typically either a $ref or a single item with a type declaration and other info
+    is_ref = req_body_schema.get("$ref", None) is not None
+    result = []
+    if is_ref:
+        # do $ref things
+        result.append(
+            RequestBodyParameter(None, None, req_body_schema.get("$ref", None), None)
+        )
+    else:
+        item_type = req_body_schema.get("type", None)
+        item_name = req_body_schema.get("name", None)
+        item_items = req_body_schema.get("items", None)
+        result.append(RequestBodyParameter(item_name, item_type, None, item_items))
+
+    return result
 
 
 def copy_parameter_data(name: str, parameter_data: dict) -> RequestBodyParameter:
@@ -209,8 +237,21 @@ def build_param_values(parameters: list[RequestBodyParameter]) -> str:
     return "".join(result)
 
 
-def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> TestTarget:
+def build_param_string(
+    req_body_parameters: list[RequestBodyParameter],
+    url_parameters: list[URLEmbeddedParameter],
+) -> str:
+    """
+    Take the parameter info from the spec and convert it into a string of code that can be directly substituted into the
+    template at the appropriate point.
+    :param req_body_parameters:
+    :param url_parameters:
+    :return:
+    """
+    return ""
 
+
+def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> TestTarget:
     lookup_base = full_spec["paths"][path_value][verb_value]
     try:
         # If the request has a request body, gather the name as CamelCase for use later
