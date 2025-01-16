@@ -42,11 +42,11 @@ def get_request_body_parameters_from_ref(
         optional_or_required_params = cur["required"]
     else:
         # all parameters
-        optional_or_required_params = cur["properties"]
+        optional_or_required_params = list(cur["properties"].keys())
 
     for some_param in optional_or_required_params:
         param_data = copy_parameter_data(
-            some_param, optional_or_required_params[some_param]
+            some_param, cur["properties"][some_param]
         )
         result.append(param_data)
 
