@@ -33,7 +33,6 @@ def get_request_body_parameters_from_ref(
     cur = full_spec
     for tier in split_ref:
         cur = cur.get(tier)
-    result = []
 
     has_required = cur.get("required", False)
 
@@ -44,11 +43,10 @@ def get_request_body_parameters_from_ref(
         # all parameters
         optional_or_required_params = list(cur["properties"].keys())
 
-    for some_param in optional_or_required_params:
-        param_data = copy_parameter_data(some_param, cur["properties"][some_param])
-        result.append(param_data)
-
-    return result
+    return [
+        copy_parameter_data(some_param, cur["properties"][some_param])
+        for some_param in optional_or_required_params
+    ]
 
 
 @dataclass
