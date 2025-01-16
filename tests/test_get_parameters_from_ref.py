@@ -1,6 +1,6 @@
 import json
 
-from main import get_request_body_parameters_from_ref
+from target_conversion import get_request_body_parameters_from_ref
 
 
 def test_get_parameters_from_ref():

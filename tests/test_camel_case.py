@@ -1,5 +1,4 @@
-from main import camel_case
-import pytest
+from target_conversion import camel_case
 
 
 def test_camel_case():

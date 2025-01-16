@@ -1,6 +1,6 @@
 import json
 
-from main import get_url_embedded_parameters
+from target_conversion import get_url_embedded_parameters
 
 
 def test_get_url_embedded_parameters():

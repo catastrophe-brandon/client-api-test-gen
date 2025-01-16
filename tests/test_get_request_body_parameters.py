@@ -1,6 +1,6 @@
 import json
 
-from main import get_request_body_parameters
+from target_conversion import get_request_body_parameters
 
 
 def test_get_request_body_parameters():

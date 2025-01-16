@@ -1,6 +1,4 @@
-import pytest
-
-from main import build_param_values, RequestBodyParameter
+from target_conversion import RequestBodyParameter, build_param_values
 
 
 def test_build_param_values():
