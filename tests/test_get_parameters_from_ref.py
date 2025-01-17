@@ -24,7 +24,9 @@ def test_get_parameters_from_ref():
 def test_get_parameters_from_ref_including_optional():
 
     params = get_request_body_parameters_from_ref(
-        full_spec, ref="#/components/schemas/UpdateBehaviorGroupRequest", include_optional=True
+        full_spec,
+        ref="#/components/schemas/UpdateBehaviorGroupRequest",
+        include_optional=True,
     )
     assert len(params) == 4
     assert params[0].name == "display_name"

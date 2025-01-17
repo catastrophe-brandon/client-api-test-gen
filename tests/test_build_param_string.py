@@ -39,6 +39,9 @@ def test_build_param_string():
 
     result = build_param_string(full_spec, req_body_params, url_embedded_params)
     assert len(result) == 2
-    assert result[0] == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = { };"
+    assert (
+        result[0]
+        == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = { };"
+    )
     assert result[1].startswith("id:")
     assert result[1].endswith("updateBehaviorGroupRequest")

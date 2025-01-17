@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 
 class Spec(object):
-    """ Spec data loaded from an OpenAPI JSON spec file"""
+    """Spec data loaded from an OpenAPI JSON spec file"""
+
     spec_data: dict
 
     def __init__(self, spec_data):
@@ -25,7 +26,6 @@ class Spec(object):
         for tier in split_ref:
             cur = cur.get(tier)
         return cur
-
 
 
 @dataclass
@@ -273,14 +273,16 @@ def dummy_value_for_type(input_type: str):
     elif input_type == "boolean":
         return "true"
     elif input_type == "string":
-        return "\"\""
+        return '""'
     elif input_type == "number":
         return "0"
     elif input_type == "object":
         return "null"
 
 
-def build_dependent_param_string(full_spec: dict, dependent_params: list[RequestBodyParameter]) -> str:
+def build_dependent_param_string(
+    full_spec: dict, dependent_params: list[RequestBodyParameter]
+) -> str:
     """Builds a 'dependent' object for each item in the input list"""
     dependent_params_strs = []
     for dependent_param in dependent_params:
@@ -291,7 +293,9 @@ def build_dependent_param_string(full_spec: dict, dependent_params: list[Request
         dependent_params_from_ref = get_request_body_parameters_from_ref(
             full_spec, dependent_param.ref
         )
-        dependent_param_str += "{ " + build_param_values(dependent_params_from_ref) + "};"
+        dependent_param_str += (
+            "{ " + build_param_values(dependent_params_from_ref) + "};"
+        )
         dependent_params_strs.append(dependent_param_str)
 
     return "".join(dependent_params_strs)
@@ -300,7 +304,8 @@ def build_dependent_param_string(full_spec: dict, dependent_params: list[Request
 CUSTOM_UUID_REFS = ["#/components/schemas/UUID"]
 
 
-def build_param_string(full_spec: dict,
+def build_param_string(
+    full_spec: dict,
     req_body_parameters: list[RequestBodyParameter],
     url_parameters: list[URLEmbeddedParameter],
 ) -> (str, str):
