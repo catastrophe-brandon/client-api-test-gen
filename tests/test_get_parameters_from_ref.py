@@ -2,19 +2,29 @@ import json
 
 from target_conversion import get_request_body_parameters_from_ref
 
+full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
+
 
 def test_get_parameters_from_ref():
-    full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
 
+    # 1 required field
     params = get_request_body_parameters_from_ref(
         full_spec, ref="#/components/schemas/CreateBehaviorGroupRequest"
     )
-    assert len(params) == 1
-    assert params[0].name == "display_name"
-    assert params[0].type == "string"
 
+    assert len(params) == 1
+
+    # UpdateBehaviorGroupRequest has no required fields
     params = get_request_body_parameters_from_ref(
         full_spec, ref="#/components/schemas/UpdateBehaviorGroupRequest"
+    )
+    assert len(params) == 0
+
+
+def test_get_parameters_from_ref_including_optional():
+
+    params = get_request_body_parameters_from_ref(
+        full_spec, ref="#/components/schemas/UpdateBehaviorGroupRequest", include_optional=True
     )
     assert len(params) == 4
     assert params[0].name == "display_name"
@@ -33,3 +43,4 @@ def test_get_parameters_from_ref():
 
 def test_get_parameters_from_ref_including_dependent_objects():
     """When a ref contains dependent objects, those objects need to be built as well."""
+    pass

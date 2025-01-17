@@ -6,6 +6,28 @@ import uuid
 from dataclasses import dataclass
 
 
+class Spec(object):
+    """ Spec data loaded from an OpenAPI JSON spec file"""
+    spec_data: dict
+
+    def __init__(self, spec_data):
+        self.spec_data = spec_data
+
+    def get_ref(self, ref: str) -> dict:
+        """
+        Get the object associated with the ref value from the spec's data.
+        :param ref:
+        :return:
+        """
+        split_ref = ref.split("/")
+        split_ref.remove("#")
+        cur = self.spec_data
+        for tier in split_ref:
+            cur = cur.get(tier)
+        return cur
+
+
+
 @dataclass
 class RequestBodyParameter(object):
     """
@@ -19,13 +41,23 @@ class RequestBodyParameter(object):
 
 
 def get_base_object_from_ref(ref: str) -> str:
-    """Given a $ref returns the name of the object at the end of the ref"""
+    """Given a $ref returns the name of the object at the end of the ref as a string"""
     split_ref = ref.split("/")
     return split_ref[-1]
 
 
+def get_ref_from_spec(full_spec: dict, ref: str) -> dict:
+    """Given the spec info as a dict, get the definition object of the provided $ref"""
+    split_ref = ref.split("/")
+    split_ref.remove("#")
+    cur = full_spec
+    for tier in split_ref:
+        cur = cur.get(tier)
+    return cur
+
+
 def get_request_body_parameters_from_ref(
-    full_spec: dict, ref: str
+    full_spec: dict, ref: str, include_optional=False
 ) -> list[RequestBodyParameter]:
     """
     Returns a list of required parameters for use with this endpoint based on info from the provided $ref
@@ -35,11 +67,7 @@ def get_request_body_parameters_from_ref(
 
     Note: Only returns parameters that are required at the moment.
     """
-    split_ref = ref.split("/")
-    split_ref.remove("#")
-    cur = full_spec
-    for tier in split_ref:
-        cur = cur.get(tier)
+    cur = get_ref_from_spec(full_spec, ref)
 
     has_required = cur.get("required", False)
 
@@ -47,8 +75,11 @@ def get_request_body_parameters_from_ref(
         # only required parameters
         optional_or_required_params = cur["required"]
     else:
-        # all parameters
-        optional_or_required_params = list(cur["properties"].keys())
+        if include_optional:
+            optional_or_required_params = list(cur["properties"].keys())
+        else:
+            # all parameters are optional, none required!
+            return []
 
     return [
         copy_parameter_data(some_param, cur["properties"][some_param])
@@ -208,7 +239,7 @@ def get_url_embedded_parameters(
 def build_imports(
     import_class_prefix: str, test_target_data: list[TestTarget]
 ) -> list[str]:
-    """Builds the data to populate the JS imports"""
+    """Builds the data to populate the JS imports based on data extracted from the spec"""
     # Response classes
     import_names = [
         f"{import_class_prefix}{x.response_schema_class}"
@@ -236,26 +267,40 @@ def build_imports(
 
 def dummy_value_for_type(input_type: str):
     """Given a type from the spec, return a default value that can be used as parameter input"""
+    # Use faker to produce realistic data?
     if input_type == "array":
         return "[]"
     elif input_type == "boolean":
         return "true"
     elif input_type == "string":
-        return ""
+        return "\"\""
     elif input_type == "number":
         return "0"
     elif input_type == "object":
         return "null"
 
 
-def build_dependent_param_string(dependent_params: list[str]) -> str:
-    pass
+def build_dependent_param_string(full_spec: dict, dependent_params: list[RequestBodyParameter]) -> str:
+    """Builds a 'dependent' object for each item in the input list"""
+    dependent_params_strs = []
+    for dependent_param in dependent_params:
+        # determine the object name
+        base_str = get_base_object_from_ref(dependent_param.ref)
+        obj_name = f"{base_str[0].lower()}{base_str[1:]}"
+        dependent_param_str = f"""const {obj_name} : {base_str} = """
+        dependent_params_from_ref = get_request_body_parameters_from_ref(
+            full_spec, dependent_param.ref
+        )
+        dependent_param_str += "{ " + build_param_values(dependent_params_from_ref) + "};"
+        dependent_params_strs.append(dependent_param_str)
+
+    return "".join(dependent_params_strs)
 
 
 CUSTOM_UUID_REFS = ["#/components/schemas/UUID"]
 
 
-def build_param_string(
+def build_param_string(full_spec: dict,
     req_body_parameters: list[RequestBodyParameter],
     url_parameters: list[URLEmbeddedParameter],
 ) -> (str, str):
@@ -301,7 +346,8 @@ def build_param_string(
             # If this is a ref we need to build a "dependent" param and put the instance name in the parameter list
             dependent_params.append(req_body_param)
             req_object_name = get_base_object_from_ref(req_body_param.ref)
-            req_param_strs.append(req_object_name)
+            # need to lower case the first char
+            req_param_strs.append(f"{req_object_name[0].lower()}{req_object_name[1:]}")
         else:
             # custom for our spec
             if req_body_param.ref in CUSTOM_UUID_REFS:
@@ -312,40 +358,33 @@ def build_param_string(
                 )
 
     # "dependent" parameters
-    dependent_params_str = ""
+    dependent_params_str = build_dependent_param_string(full_spec, dependent_params)
 
     # assemble the final string
     return dependent_params_str, ", ".join(url_param_strs + req_param_strs)
 
 
 def build_param_values(parameters: list[RequestBodyParameter]) -> str:
-    """Takes a list of EndpointParameter objects and converts it to a parameter string that can be
+    """Takes a list of RequestBodyParameter objects and converts it to a string that can be
     substituted into the template for the specific test target."""
     result = []
     for endpt_param in parameters:
         name = camel_case(endpt_param.name)
-        if endpt_param.type == "array":
-            result.append(f"{name}: [],\n")
-        elif endpt_param.type == "boolean":
-            result.append(f"{name}: true,\n")
-        elif endpt_param.type == "string":
-            result.append(f'{name}: "",\n')
-        elif endpt_param.type == "number":
-            result.append(f"{name}: 0,\n")
-        elif endpt_param.type == "object":
-            result.append(f"{name}: null\n")
-    return "".join(result)
+        value = dummy_value_for_type(endpt_param.type)
+        result.append(f"{name}: {value}")
+    return ", ".join(result)
 
 
 def copy_parameter_data(name: str, parameter_data: dict) -> RequestBodyParameter:
     """Takes request body parameter from the spec and copies it into a RequestBodyParameter object"""
-    type = parameter_data["type"]
     ref = parameter_data.get("ref", None)
-    aggregate_info = parameter_data.get("items", None) if type == "array" else None
-    return RequestBodyParameter(name, type, ref, aggregate_info)
+    aggregate_info = (
+        parameter_data.get("items", None) if parameter_data["type"] == "array" else None
+    )
+    return RequestBodyParameter(name, parameter_data["type"], ref, aggregate_info)
 
 
-def convert_operation_id_to_classname(name_from_json):
+def convert_operation_id_to_classname(name_from_json: str):
     """
     Removes any _ or $ and capitalizes name appropriately; for use in reformatting operationId
     to use in JS import statements
@@ -357,7 +396,7 @@ def convert_operation_id_to_classname(name_from_json):
 
 
 def camel_case(name: str):
-    """Takes a string_like_this and convert to StringLikeThis"""
+    """Takes a string_like_this and converts it to StringLikeThis"""
     result = ""
     chunks = name.split("_")
     for chunk in chunks:
