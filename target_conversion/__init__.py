@@ -2,6 +2,7 @@
 Code for converting information from the openapi spec into target format for template substitution.
 """
 
+import uuid
 from dataclasses import dataclass
 
 
@@ -15,6 +16,12 @@ class RequestBodyParameter(object):
     type: str | None
     ref: str | None
     aggregate_info: dict | None
+
+
+def get_base_object_from_ref(ref: str) -> str:
+    """Given a $ref returns the name of the object at the end of the ref"""
+    split_ref = ref.split("/")
+    return split_ref[-1]
 
 
 def get_request_body_parameters_from_ref(
@@ -227,18 +234,88 @@ def build_imports(
     return import_names
 
 
+def dummy_value_for_type(input_type: str):
+    """Given a type from the spec, return a default value that can be used as parameter input"""
+    if input_type == "array":
+        return "[]"
+    elif input_type == "boolean":
+        return "true"
+    elif input_type == "string":
+        return ""
+    elif input_type == "number":
+        return "0"
+    elif input_type == "object":
+        return "null"
+
+
+def build_dependent_param_string(dependent_params: list[str]) -> str:
+    pass
+
+
+CUSTOM_UUID_REFS = ["#/components/schemas/UUID"]
+
+
 def build_param_string(
     req_body_parameters: list[RequestBodyParameter],
     url_parameters: list[URLEmbeddedParameter],
-) -> str:
+) -> (str, str):
     """
-    Take the parameter info from the spec and convert it into a string of code that can be directly substituted into the
-    template at the appropriate point.
-    :param req_body_parameters:
-    :param url_parameters:
+    Takes the parameter info from the spec and produces two pieces of information.
+
+    The first is generated code to instantiate the request body (if needed)
+    The second is a parameter list that can be directly substituted into the template.
+
+    Generally, the generated parameter list will follow a format like the following:
+       `<path params>, <request body params>`
+
+    The generated instantiation code will look something like this:
+
+    '''
+       const someRequestObject: <requestObjectType> = {
+           <requestBodyParamName>: <requestBodyParamValue>,
+       }
+    '''
+
+    :param req_body_parameters: request body parameter objects obtained from previous spec parsing
+    :param url_parameters: embedded parameters for this endpoint, obtained from previous spec parsing
     :return:
     """
-    return ""
+
+    url_param_strs: list[str] = []
+
+    # URL parameters first
+    for url_param in url_parameters:
+        if url_param.schema.get("$ref", None) in CUSTOM_UUID_REFS:
+            url_param_strs.append(f"{url_param.name}: '{uuid.uuid4()}'")
+        else:
+            url_param_strs.append(
+                f"{url_param.name}: {dummy_value_for_type(url_param.type)}"
+            )
+
+    dependent_params = []
+
+    # request body parameters next
+    req_param_strs: list[str] = []
+    for req_body_param in req_body_parameters:
+        if req_body_param.ref != "":
+            # If this is a ref we need to build a "dependent" param and put the instance name in the parameter list
+            dependent_params.append(req_body_param)
+            req_object_name = get_base_object_from_ref(req_body_param.ref)
+            req_param_strs.append(req_object_name)
+        else:
+            # custom for our spec
+            if req_body_param.ref in CUSTOM_UUID_REFS:
+                req_param_strs.append(f"{req_body_param.name}: '{uuid.uuid4()}'")
+            else:
+                req_param_strs.append(
+                    f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type)}"
+                )
+
+    # "dependent" parameters
+    dependent_params_str = ""
+
+    # assemble the final string
+    return dependent_params_str, ", ".join(url_param_strs + req_param_strs)
 
 
 def build_param_values(parameters: list[RequestBodyParameter]) -> str:

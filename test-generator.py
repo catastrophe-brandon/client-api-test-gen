@@ -1,9 +1,8 @@
 import argparse
-import json
 import os
 import chevron
-import requests
 
+from spec_download import download_specfile, SpecDownloadError
 from target_conversion import build_test_target, build_imports
 
 
@@ -17,34 +16,6 @@ def render_template(file_path, template_data: dict, dest_file: str | None = None
         else:
             # No file? -> stdout
             print(rendered_template)
-
-
-def convert_yaml_to_json(file_data: str) -> dict:
-    raise NotImplementedError
-
-
-def get_spec(url) -> dict:
-    """Get the openapi spec from an url"""
-    resp = requests.get(url)
-
-    if "json" not in url:
-        result = convert_yaml_to_json(resp.text)
-    else:
-        result = json.loads(resp.text)
-
-    return result
-
-
-class SpecDownloadError(Exception):
-    pass
-
-
-def download_specfile(url: str):
-    try:
-        return get_spec(url)
-    except Exception:
-        print("Something went wrong while downloading spec from URL")
-        raise SpecDownloadError
 
 
 # TODO: Make this an enum for future use?
