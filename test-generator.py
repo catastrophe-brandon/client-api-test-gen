@@ -7,7 +7,7 @@ import requests
 from target_conversion import build_test_target, build_imports
 
 
-def render_template(file_path, template_data: dict, dest_file=None):
+def render_template(file_path, template_data: dict, dest_file: str | None = None):
     """Substitutes the data into the mustache template and produces a test file"""
     with open(file_path, "r") as f:
         rendered_template = chevron.render(f, template_data)
@@ -19,10 +19,20 @@ def render_template(file_path, template_data: dict, dest_file=None):
             print(rendered_template)
 
 
+def convert_yaml_to_json(file_data: str) -> dict:
+    raise NotImplementedError
+
+
 def get_spec(url) -> dict:
     """Get the openapi spec from an url"""
     resp = requests.get(url)
-    return json.loads(resp.text)
+
+    if "json" not in url:
+        result = convert_yaml_to_json(resp.text)
+    else:
+        result = json.loads(resp.text)
+
+    return result
 
 
 class SpecDownloadError(Exception):
@@ -44,7 +54,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         prog="test-generator",
-        description="Generates test source for use in the javascript-clients repo",
+        description="Generates test source for use in the javascript-clients repo based on an OpenAPI spec",
         epilog="Never trust an initial query editor",
     )
 
@@ -68,6 +78,8 @@ if __name__ == "__main__":
     except SpecDownloadError as e:
         print(f"Error downloading spec from {spec_url}")
         exit(1)
+
+    # TODO: if spec was YAML, convert it to JSON before proceeding
 
     template_file = "test_template.mustache"
     if not os.path.isfile(template_file):
