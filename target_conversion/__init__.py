@@ -306,13 +306,13 @@ CUSTOM_UUID_REFS = ["#/components/schemas/UUID"]
 
 def build_param_string(
     full_spec: dict,
-    req_body_parameters: list[RequestBodyParameter],
-    url_parameters: list[URLEmbeddedParameter],
+    req_body_parameters: list[RequestBodyParameter] | None,
+    url_parameters: list[URLEmbeddedParameter] | None,
 ) -> (str, str):
     """
     Takes the parameter info from the spec and produces two pieces of information.
 
-    The first is generated code to instantiate the request body (if needed)
+    The first is generated code to instantiate the request body object (if needed)
     The second is a parameter list that can be directly substituted into the template.
 
     Generally, the generated parameter list will follow a format like the following:
@@ -322,10 +322,11 @@ def build_param_string(
 
     '''
        const someRequestObject: <requestObjectType> = {
-           <requestBodyParamName>: <requestBodyParamValue>,
+           <requestBodyParamName>: <requestBodyParamValue>
        }
     '''
 
+    :param full_spec
     :param req_body_parameters: request body parameter objects obtained from previous spec parsing
     :param url_parameters: embedded parameters for this endpoint, obtained from previous spec parsing
     :return:
@@ -333,34 +334,38 @@ def build_param_string(
 
     url_param_strs: list[str] = []
 
-    # URL parameters first
-    for url_param in url_parameters:
-        if url_param.schema.get("$ref", None) in CUSTOM_UUID_REFS:
-            url_param_strs.append(f"{url_param.name}: '{uuid.uuid4()}'")
-        else:
-            url_param_strs.append(
-                f"{url_param.name}: {dummy_value_for_type(url_param.type)}"
-            )
+    if url_parameters is not None:
+        # URL parameters first
+        for url_param in url_parameters:
+            if url_param.schema.get("$ref", None) in CUSTOM_UUID_REFS:
+                url_param_strs.append(f"{url_param.name}: '{uuid.uuid4()}'")
+            else:
+                url_param_strs.append(
+                    f"{url_param.name}: {dummy_value_for_type(url_param.type)}"
+                )
 
     dependent_params = []
 
-    # request body parameters next
     req_param_strs: list[str] = []
-    for req_body_param in req_body_parameters:
-        if req_body_param.ref != "":
-            # If this is a ref we need to build a "dependent" param and put the instance name in the parameter list
-            dependent_params.append(req_body_param)
-            req_object_name = get_base_object_from_ref(req_body_param.ref)
-            # need to lower case the first char
-            req_param_strs.append(f"{req_object_name[0].lower()}{req_object_name[1:]}")
-        else:
-            # custom for our spec
-            if req_body_param.ref in CUSTOM_UUID_REFS:
-                req_param_strs.append(f"{req_body_param.name}: '{uuid.uuid4()}'")
-            else:
+    if req_body_parameters is not None:
+        # request body parameters next
+        for req_body_param in req_body_parameters:
+            if req_body_param.ref != "":
+                # If this is a ref we need to build a "dependent" param and put the instance name in the parameter list
+                dependent_params.append(req_body_param)
+                req_object_name = get_base_object_from_ref(req_body_param.ref)
+                # need to lower case the first char
                 req_param_strs.append(
-                    f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type)}"
+                    f"{req_object_name[0].lower()}{req_object_name[1:]}"
                 )
+            else:
+                # custom for our spec
+                if req_body_param.ref in CUSTOM_UUID_REFS:
+                    req_param_strs.append(f"{req_body_param.name}: '{uuid.uuid4()}'")
+                else:
+                    req_param_strs.append(
+                        f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type)}"
+                    )
 
     # "dependent" parameters
     dependent_params_str = build_dependent_param_string(full_spec, dependent_params)
