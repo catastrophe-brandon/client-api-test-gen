@@ -7,7 +7,7 @@ full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
 
 def test_get_parameters_from_ref():
 
-    # 1 required field
+    # 1 required field in CreateBehaviorGroupRequest
     params = get_request_body_parameters_from_ref(
         full_spec, ref="#/components/schemas/CreateBehaviorGroupRequest"
     )

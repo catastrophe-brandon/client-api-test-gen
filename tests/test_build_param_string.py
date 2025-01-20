@@ -28,6 +28,10 @@ def test_build_dependent_param_string():
 
 
 def test_build_param_string():
+    """
+    When both the embedded params and the request body params are included, both should
+    be found in the response from the function call
+    """
     spec_path = "/notifications/behaviorGroups/{id}"
     spec_verb = "put"
 

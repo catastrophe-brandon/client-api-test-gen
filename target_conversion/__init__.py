@@ -104,7 +104,8 @@ class TestTarget(object):
     response_schema: str
     response_schema_class: str
     parameter_schema: str
-    parameter_values: str
+    parameter_api_client_call: str
+    parameter_dependent_objects: str
 
 
 def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> TestTarget:
@@ -152,7 +153,11 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
         parameters = []
 
     request_class = convert_operation_id_to_classname(lookup_base["operationId"])
-    param_values = build_param_values(parameters)
+    req_body_parameters = get_request_body_parameters(full_spec, path_value, verb_value)
+    url_parameters = get_url_embedded_parameters(full_spec, path_value, verb_value)
+    dependent_param_str, api_client_param_str = build_param_string(
+        full_spec, req_body_parameters, url_parameters
+    )
 
     test_target = TestTarget(
         url_path=path_value,
@@ -165,7 +170,8 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
         response_schema=response_schema,
         response_schema_class=response_schema_class,
         parameter_schema=parameter_schema,
-        parameter_values=param_values,
+        parameter_api_client_call=api_client_param_str,
+        parameter_dependent_objects=dependent_param_str,
     )
     return test_target
 
