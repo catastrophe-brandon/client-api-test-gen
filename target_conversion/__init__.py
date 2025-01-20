@@ -141,17 +141,6 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
         response_schema = ""
         response_schema_class = ""
 
-    if parameter_schema != "":
-        try:
-            # if there's a request body ref, determine the parameters from the schema ref
-            parameters = get_request_body_parameters_from_ref(
-                full_spec, parameter_schema
-            )
-        except Exception:
-            parameters = []
-    else:
-        parameters = []
-
     request_class = convert_operation_id_to_classname(lookup_base["operationId"])
     req_body_parameters = get_request_body_parameters(full_spec, path_value, verb_value)
     url_parameters = get_url_embedded_parameters(full_spec, path_value, verb_value)
@@ -356,7 +345,7 @@ def build_param_string(
     if req_body_parameters is not None:
         # request body parameters next
         for req_body_param in req_body_parameters:
-            if req_body_param.ref != "":
+            if req_body_param.ref != "" and req_body_param.ref is not None:
                 # If this is a ref we need to build a "dependent" param and put the instance name in the parameter list
                 dependent_params.append(req_body_param)
                 req_object_name = get_base_object_from_ref(req_body_param.ref)
@@ -369,9 +358,15 @@ def build_param_string(
                 if req_body_param.ref in CUSTOM_UUID_REFS:
                     req_param_strs.append(f"{req_body_param.name}: '{uuid.uuid4()}'")
                 else:
-                    req_param_strs.append(
-                        f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type)}"
-                    )
+                    if req_body_param.name is not None:
+                        req_param_strs.append(
+                            f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type)}"
+                        )
+                    else:
+                        # ref is None and name is None
+                        req_param_strs.append(
+                            f"{dummy_value_for_type(req_body_param.type)}"
+                        )
 
     # "dependent" parameters
     dependent_params_str = build_dependent_param_string(full_spec, dependent_params)
