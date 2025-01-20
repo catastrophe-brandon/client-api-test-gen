@@ -35,9 +35,18 @@ def test_build_test_target_both_embedded_and_request_body():
 
     assert "" in target.parameter_dependent_objects
     assert "eventTypeId:" in target.parameter_api_client_call
+    # Default value for an array type without a named parameter is empty array
     assert "[]" in target.parameter_api_client_call
 
 
 def test_build_test_target_neither():
     """Build a test target that has no parameters"""
-    pass
+
+    # Has no required parameters
+    spec_path = "/notifications/eventTypes"
+    spec_verb = "get"
+
+    target = build_test_target(full_spec, spec_path, spec_verb)
+    assert "" == target.parameter_dependent_objects
+    assert "" == target.parameter_api_client_call
+
