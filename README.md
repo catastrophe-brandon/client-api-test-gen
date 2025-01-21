@@ -14,10 +14,42 @@ pip install -r requirements.txt
 
 ## Usage
 
-`python main.py spec_url output_file`
+To send output to a file:
 
-or
+`python -m test-generator spec_url output_file`
 
-`python main.py spec_url`
+To send output to stdout (useful for debugging):
 
-if you just want the generated data to go to stdout
+`python -m test-generator spec_url`
+
+## Templating
+
+The generator uses Mustache as the templating engine through the Chevron library.
+
+Template can be found as `test_template.mustache`
+
+The generator essentially gathers a bunch of information from the API spec and munges it into a format compatible with that template. This means that any changes to the template that add or remove data from the spec require code changes to the generator.
+
+All the necessary data from the API spec is aggregated into a class called TestTarget (for lack of a better name). The logic around data extraction/aggregation is in the `target_conversion` module.
+
+## Tests
+
+Parsing/extraction logic is innately brittle, so tests have been provided in the `tests` module. Whenever the logic changes, update the tests.
+
+Test data is found in the `tests/data` directory. At the moment this only includes an example spec used for testing purposes, but may be expanded to include other data.
+
+## Using the output file
+
+The generated output file is Javascript/Typescript source.
+
+It is intended to be compatible with the code structuring standards found in the javascript-clients repository. One may verify compatibility by copying the produced file to the desired location and running the tests.
+
+The output file includes a single test per client endpoint, thus ensuring a basic level of coverage for each client-level operation. Each test focuses on the "happy path" as a basic sniff test of client operationality. Test coverage is not intended to be exhaustive, merely an indicator.
+
+
+
+
+
+
+
+
