@@ -1,8 +1,8 @@
-from target_conversion import RequestBodyParameter, build_param_values
+from target_conversion import RequestBodyParameter, render_params_as_string
 
 
 def test_build_param_values():
     endpt_jeff = RequestBodyParameter("jeff", "string", None, None)
 
-    result = build_param_values([endpt_jeff])
+    result = render_params_as_string([endpt_jeff])
     assert result == 'jeff: ""'

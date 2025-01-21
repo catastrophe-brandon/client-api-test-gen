@@ -85,7 +85,7 @@ def get_request_body_parameters_from_ref(
         # only required parameters
         optional_or_required_params = cur["required"]
     else:
-        # all parameters are optional, none required!
+        # all parameters are optional; none required!
         return []
 
     return [
@@ -303,7 +303,7 @@ def build_dependent_param_string(
             full_spec, dependent_param.ref, include_optional=include_all
         )
         dependent_param_str += (
-            "{ " + build_param_values(dependent_params_from_ref) + " };"
+            "{ " + render_params_as_string(dependent_params_from_ref) + " };"
         )
         dependent_params_strs.append(dependent_param_str)
 
@@ -320,15 +320,15 @@ def build_param_string(
     include_all: bool = False,
 ) -> (str, str):
     """
-    Takes the parameter info from the spec and produces two pieces of information.
+    Takes the parameter info from the spec and produces two pieces of information:
 
-    The first is generated code to instantiate the request body object (if needed)
-    The second is a parameter list that can be directly substituted into the template.
+    1. generated code to instantiate the request body object (if needed)
+    2. a parameter list in string format that can be directly substituted into the template.
 
-    Generally, the generated parameter list will follow a format like the following:
+    the generated parameter list (#2) will follow a format like the following:
        `<path params>, <request body params>`
 
-    The generated instantiation code will look something like this:
+    The generated dependent object instantiation code (#1) will look something like this:
 
     '''
        const someRequestObject: <requestObjectType> = {
@@ -336,10 +336,10 @@ def build_param_string(
        }
     '''
 
-    :param full_spec
-    :param req_body_parameters: request body parameter objects obtained from previous spec parsing
-    :param url_parameters: embedded parameters for this endpoint, obtained from previous spec parsing
-    :param all: indicates that all parameters should be included, not just the required ones
+    :param include_all: include all parameters, not just required ones
+    :param full_spec object containing all the openapi spec in dict format
+    :param req_body_parameters: RequestBodyParameter objects obtained from previous spec parsing
+    :param url_parameters: "embedded" parameters for this endpoint, obtained from previous spec parsing
     :return:
     """
 
@@ -393,11 +393,21 @@ def build_param_string(
     return dependent_params_str, ", ".join(url_param_strs + req_param_strs)
 
 
-def build_param_values(parameters: list[RequestBodyParameter]) -> str:
-    """Takes a list of RequestBodyParameter objects and converts it to a string that can be
-    substituted into the template for the specific test target."""
+class InvalidInputDataError(Exception):
+    pass
+
+
+def render_params_as_string(parameters: list[RequestBodyParameter]) -> str:
+    """
+    Takes a list of RequestBodyParameter objects and converts it to a string that can be
+    substituted into the template for the specific test target.
+
+    List is expected to contain items of primitive types, e.g. non-object
+    """
     result = []
     for endpt_param in parameters:
+        if endpt_param.type == "object":
+            raise InvalidInputDataError
         value = dummy_value_for_type(endpt_param.type)
         if endpt_param.name:
             name = camel_case(endpt_param.name)
@@ -412,9 +422,13 @@ def copy_parameter_data(name: str, parameter_data: dict) -> RequestBodyParameter
     """Takes request body parameter from the spec and copies it into a RequestBodyParameter object"""
     ref = parameter_data.get("ref", None)
     aggregate_info = (
-        parameter_data.get("items", None) if parameter_data["type"] == "array" else None
+        parameter_data.get("items", None)
+        if parameter_data.get("type", None) == "array"
+        else None
     )
-    return RequestBodyParameter(name, parameter_data["type"], ref, aggregate_info)
+    return RequestBodyParameter(
+        name, parameter_data.get("type", None), ref, aggregate_info
+    )
 
 
 def convert_operation_id_to_classname(name_from_json: str):
@@ -429,7 +443,7 @@ def convert_operation_id_to_classname(name_from_json: str):
 
 
 def camel_case(name: str):
-    """Takes a string_like_this and converts it to StringLikeThis"""
+    """Takes a string_like_this and converts to StringLikeThis"""
     result = ""
     chunks = name.split("_")
     for chunk in chunks:
