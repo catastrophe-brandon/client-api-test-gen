@@ -67,19 +67,26 @@ def get_request_body_parameters_from_ref(
 
     Note: Only returns parameters that are required at the moment.
     """
+
     cur = get_ref_from_spec(full_spec, ref)
 
     has_required = cur.get("required", False)
 
-    if has_required:
+    if include_optional:
+        # endpoint spec specified that the entire request body is required,
+        # or we want to include all parameters for completeness
+        if cur["type"] == "object":
+            optional_or_required_params = list(cur["properties"].keys())
+        else:
+            # non-object data like a string
+            return [RequestBodyParameter(None, cur["type"], None, None)]
+
+    elif has_required:
         # only required parameters
         optional_or_required_params = cur["required"]
     else:
-        if include_optional:
-            optional_or_required_params = list(cur["properties"].keys())
-        else:
-            # all parameters are optional, none required!
-            return []
+        # all parameters are optional, none required!
+        return []
 
     return [
         copy_parameter_data(some_param, cur["properties"][some_param])
@@ -144,8 +151,15 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
     request_class = convert_operation_id_to_classname(lookup_base["operationId"])
     req_body_parameters = get_request_body_parameters(full_spec, path_value, verb_value)
     url_parameters = get_url_embedded_parameters(full_spec, path_value, verb_value)
+
+    # determine if all param values from a request body are required on the request
+    try:
+        include_all = lookup_base["requestBody"]["required"]
+    except KeyError:
+        include_all = False
+
     dependent_param_str, api_client_param_str = build_param_string(
-        full_spec, req_body_parameters, url_parameters
+        full_spec, req_body_parameters, url_parameters, include_all=include_all
     )
 
     test_target = TestTarget(
@@ -276,7 +290,7 @@ def dummy_value_for_type(input_type: str):
 
 
 def build_dependent_param_string(
-    full_spec: dict, dependent_params: list[RequestBodyParameter]
+    full_spec: dict, dependent_params: list[RequestBodyParameter], include_all=False
 ) -> str:
     """Builds a 'dependent' object for each item in the input list"""
     dependent_params_strs = []
@@ -286,7 +300,7 @@ def build_dependent_param_string(
         obj_name = f"{base_str[0].lower()}{base_str[1:]}"
         dependent_param_str = f"""const {obj_name} : {base_str} = """
         dependent_params_from_ref = get_request_body_parameters_from_ref(
-            full_spec, dependent_param.ref
+            full_spec, dependent_param.ref, include_optional=include_all
         )
         dependent_param_str += (
             "{ " + build_param_values(dependent_params_from_ref) + " };"
@@ -303,6 +317,7 @@ def build_param_string(
     full_spec: dict,
     req_body_parameters: list[RequestBodyParameter] | None,
     url_parameters: list[URLEmbeddedParameter] | None,
+    include_all: bool = False,
 ) -> (str, str):
     """
     Takes the parameter info from the spec and produces two pieces of information.
@@ -324,6 +339,7 @@ def build_param_string(
     :param full_spec
     :param req_body_parameters: request body parameter objects obtained from previous spec parsing
     :param url_parameters: embedded parameters for this endpoint, obtained from previous spec parsing
+    :param all: indicates that all parameters should be included, not just the required ones
     :return:
     """
 
@@ -369,7 +385,9 @@ def build_param_string(
                         )
 
     # "dependent" parameters
-    dependent_params_str = build_dependent_param_string(full_spec, dependent_params)
+    dependent_params_str = build_dependent_param_string(
+        full_spec, dependent_params, include_all=include_all
+    )
 
     # assemble the final string
     return dependent_params_str, ", ".join(url_param_strs + req_param_strs)
@@ -380,10 +398,13 @@ def build_param_values(parameters: list[RequestBodyParameter]) -> str:
     substituted into the template for the specific test target."""
     result = []
     for endpt_param in parameters:
-        name = camel_case(endpt_param.name)
-        name = f"{name[0].lower()}{name[1:]}"
         value = dummy_value_for_type(endpt_param.type)
-        result.append(f"{name}: {value}")
+        if endpt_param.name:
+            name = camel_case(endpt_param.name)
+            name = f"{name[0].lower()}{name[1:]}"
+            result.append(f"{name}: {value}")
+        else:
+            result.append(f"{value}")
     return ", ".join(result)
 
 

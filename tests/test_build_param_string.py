@@ -23,7 +23,7 @@ def test_build_dependent_param_string():
     dependent_param_str = build_dependent_param_string(full_spec, [dependent_param])
     assert (
         dependent_param_str
-        == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = { };"
+        == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = {  };"
     )
 
 
@@ -46,7 +46,7 @@ def test_build_param_string():
     assert len(result) == 2
     assert (
         result[0]
-        == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = { };"
+        == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = {  };"
     )
     # Confirm the API client call param list was generated
     assert result[1].startswith("id:")
