@@ -289,7 +289,7 @@ def build_dependent_param_string(
             full_spec, dependent_param.ref
         )
         dependent_param_str += (
-            "{ " + build_param_values(dependent_params_from_ref) + "};"
+            "{ " + build_param_values(dependent_params_from_ref) + " };"
         )
         dependent_params_strs.append(dependent_param_str)
 
@@ -381,6 +381,7 @@ def build_param_values(parameters: list[RequestBodyParameter]) -> str:
     result = []
     for endpt_param in parameters:
         name = camel_case(endpt_param.name)
+        name = f"{name[0].lower()}{name[1:]}"
         value = dummy_value_for_type(endpt_param.type)
         result.append(f"{name}: {value}")
     return ", ".join(result)

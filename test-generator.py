@@ -82,10 +82,14 @@ if __name__ == "__main__":
                 "endpoint_summary": test_target.summary,
                 "endpoint_operation": test_target.request_class,
                 "endpoint_params": f"{test_target.request_class}Params",
-                "endpoint_param_values": test_target.parameter_values,
+                "endpoint_param_values": test_target.parameter_api_client_call,
+                "endpoint_dependent_param_values": test_target.parameter_dependent_objects,
             }
             for test_target in test_targets
         ],
     }
     render_template(template_file, render_data, dest_file=out_file)
-    print(f"Success! Test source written to {out_file}")
+    if out_file is None:
+        print("Success!")
+    else:
+        print(f"Success! Test source written to {out_file}")

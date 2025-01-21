@@ -49,4 +49,3 @@ def test_build_test_target_neither():
     target = build_test_target(full_spec, spec_path, spec_verb)
     assert "" == target.parameter_dependent_objects
     assert "" == target.parameter_api_client_call
-

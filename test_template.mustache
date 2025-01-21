@@ -14,6 +14,7 @@ describe('{{api_title}} {{api_version}}', () => {
 {{#test_data}}
 
     test('{{endpoint_summary}}', async() => {
+        {{{ endpoint_dependent_param_values }}}
         const params: {{endpoint_params}} = { {{{endpoint_param_values}}} };
         const resp = await client.{{endpoint_operation}}(params);
         expect(resp.status).toBe(200);
