@@ -7,7 +7,7 @@ def test_get_url_embedded_parameters():
     """Gets the list of any url-embedded parameters from the spec"""
 
     # Try a url with embedded parameters first
-    full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
+    full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
     spec_path = "/notifications/behaviorGroups/affectedByRemovalOfEndpoint/{endpointId}"
     spec_verb = "get"
     endpoint_params = get_url_embedded_parameters(full_spec, spec_path, spec_verb)

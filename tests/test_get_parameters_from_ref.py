@@ -2,7 +2,7 @@ import json
 
 from target_conversion import get_request_body_parameters_from_ref
 
-full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
+full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
 
 
 def test_get_parameters_from_ref():

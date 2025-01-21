@@ -8,7 +8,7 @@ from target_conversion import (
     build_dependent_param_string,
 )
 
-full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
+full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
 
 
 def test_build_dependent_param_string():

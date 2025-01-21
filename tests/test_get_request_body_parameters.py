@@ -5,7 +5,7 @@ from target_conversion import get_request_body_parameters
 
 def test_get_request_body_parameters():
 
-    full_spec = json.load(open("./tests/data/notif_v1_spec.json"))
+    full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
 
     # path with a simple request body, single object as input
     parameters = get_request_body_parameters(
