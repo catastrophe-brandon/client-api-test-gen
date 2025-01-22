@@ -234,14 +234,18 @@ def get_url_embedded_parameters(
 
     for param in parameters:
         if param.get("in", None) == "path":
-            result.append(
-                URLEmbeddedParameter(
-                    param.get("name"),
-                    param.get("schema", None),
-                    param.get("type", None),
-                    param.get("required"),
-                )
+            try:
+                schema_type = param.get("schema").get("type")
+            except KeyError:
+                schema_type = None
+
+            embedded_param = URLEmbeddedParameter(
+                param.get("name"),
+                param.get("schema", None),
+                schema_type if schema_type is not None else param.get("type", None),
+                param.get("required"),
             )
+            result.append(embedded_param)
     return result
 
 
@@ -277,6 +281,7 @@ def build_imports(
 def dummy_value_for_type(input_type: str):
     """Given a type from the spec, return a default value that can be used as parameter input"""
     # Use faker to produce realistic data?
+    # assert input_type in ["array", "boolean", "string", "number"]
     if input_type == "array":
         return "[]"
     elif input_type == "boolean":
@@ -285,8 +290,9 @@ def dummy_value_for_type(input_type: str):
         return '""'
     elif input_type == "number":
         return "0"
-    elif input_type == "object":
-        return "null"
+    # "Object" is a special case that deserves further thought
+    # elif input_type == "object":
+    #     return "null"
 
 
 def build_dependent_param_string(
@@ -297,13 +303,20 @@ def build_dependent_param_string(
     for dependent_param in dependent_params:
         # determine the object name
         base_str = get_base_object_from_ref(dependent_param.ref)
+        if base_str == "UUID":
+            parm_name = camel_case(dependent_param.name)
+            parm_name = f"{parm_name[0].lower()}{parm_name[1:]}"
+            dependent_params_strs += f'{parm_name}: "{uuid.uuid4()}"'
+            continue
         obj_name = f"{base_str[0].lower()}{base_str[1:]}"
         dependent_param_str = f"""const {obj_name} : {base_str} = """
         dependent_params_from_ref = get_request_body_parameters_from_ref(
             full_spec, dependent_param.ref, include_optional=include_all
         )
+
+        # If any of the params are not basic types we need to dive deeper
         dependent_param_str += (
-            "{ " + render_params_as_string(dependent_params_from_ref) + " };"
+            "{ " + render_params_as_string(full_spec, dependent_params_from_ref) + " };"
         )
         dependent_params_strs.append(dependent_param_str)
 
@@ -384,10 +397,10 @@ def build_param_string(
                             f"{dummy_value_for_type(req_body_param.type)}"
                         )
 
-    # "dependent" parameters
-    dependent_params_str = build_dependent_param_string(
-        full_spec, dependent_params, include_all=include_all
-    )
+    # handle "dependent" parameters
+    # TODO: "normalize" dependent parameters, e.g. dependent parameters that are refs
+
+    dependent_params_str = build_dependent_param_string(full_spec, dependent_params)
 
     # assemble the final string
     return dependent_params_str, ", ".join(url_param_strs + req_param_strs)
@@ -397,7 +410,7 @@ class InvalidInputDataError(Exception):
     pass
 
 
-def render_params_as_string(parameters: list[RequestBodyParameter]) -> str:
+def render_params_as_string(full_spec, parameters: list[RequestBodyParameter]) -> str:
     """
     Takes a list of RequestBodyParameter objects and converts it to a string that can be
     substituted into the template for the specific test target.
@@ -406,9 +419,15 @@ def render_params_as_string(parameters: list[RequestBodyParameter]) -> str:
     """
     result = []
     for endpt_param in parameters:
-        if endpt_param.type == "object":
-            raise InvalidInputDataError
+        if endpt_param.type in ["object", None]:
+            # Maybe this is the right place to recurse?
+            param_string = build_dependent_param_string(full_spec, [endpt_param])
+            result.append(param_string)
+            continue
+            # raise InvalidInputDataError
+
         value = dummy_value_for_type(endpt_param.type)
+
         if endpt_param.name:
             name = camel_case(endpt_param.name)
             name = f"{name[0].lower()}{name[1:]}"
@@ -420,7 +439,7 @@ def render_params_as_string(parameters: list[RequestBodyParameter]) -> str:
 
 def copy_parameter_data(name: str, parameter_data: dict) -> RequestBodyParameter:
     """Takes request body parameter from the spec and copies it into a RequestBodyParameter object"""
-    ref = parameter_data.get("ref", None)
+    ref = parameter_data.get("$ref", None)
     aggregate_info = (
         parameter_data.get("items", None)
         if parameter_data.get("type", None) == "array"

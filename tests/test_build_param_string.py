@@ -77,3 +77,21 @@ def test_build_param_string_with_request_body_params_only():
         url_parameters=None,
     )
     assert "id:" not in result[1]
+
+
+def test_build_param_string_create_behavior_group():
+    """Confirm it works with a different endpoint"""
+    spec_path = "/notifications/behaviorGroups"
+    spec_verb = "post"
+    result = build_param_string(
+        full_spec,
+        req_body_parameters=get_request_body_parameters(
+            full_spec, spec_path, spec_verb
+        ),
+        url_parameters=None,
+    )
+    assert (
+        result[0]
+        == 'const createBehaviorGroupRequest : CreateBehaviorGroupRequest = { displayName: "" };'
+    )
+    assert result[1] == "createBehaviorGroupRequest"
