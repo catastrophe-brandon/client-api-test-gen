@@ -1,11 +1,8 @@
 import json
 
-import pytest
-
 from target_conversion import (
     RequestBodyParameter,
     render_params_as_string,
-    InvalidInputDataError,
 )
 
 full_spec = json.load(open("./tests/data/notif_v2_spec.json"))

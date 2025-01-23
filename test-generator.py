@@ -1,9 +1,11 @@
 import argparse
 import os
+from typing import List
+
 import chevron
 
 from spec_download import download_specfile, SpecDownloadError
-from target_conversion import build_test_target, build_imports
+from target_conversion import build_test_target, build_imports, TestTarget
 
 
 def render_template(file_path, template_data: dict, dest_file: str | None = None):
@@ -59,7 +61,7 @@ if __name__ == "__main__":
 
     api_title = spec["info"]["title"]
     api_version = spec["info"]["version"]
-    test_targets = []
+    test_targets: list[TestTarget] = []
 
     # Scan through all the paths and verbs building test target info along the way
     for path in spec["paths"]:
@@ -67,8 +69,13 @@ if __name__ == "__main__":
         for verb in verbs:
             test_targets.append(build_test_target(spec, path, verb))
 
-    api_prefix = f"{api_title}{api_version.upper().rstrip('.0')}"
-    import_classes = build_imports(api_prefix, test_targets)
+    api_prefix = f"{api_title}Resource{api_version.upper().rstrip('.0')}"
+    import_classes = build_imports(
+        api_title,
+        api_version=f"{api_version.upper().rstrip('.0')}",
+        import_class_prefix=api_prefix,
+        test_target_data=test_targets,
+    )
 
     print("Rendering the data into the template ...")
     # Render the template with the data extracted from the JSON spec
@@ -76,11 +83,11 @@ if __name__ == "__main__":
         "api_title": api_title,
         "api_title_lower": api_title.lower(),
         "api_version": api_version,
-        "param_class": import_classes,
+        "import_data": import_classes,
         "test_data": [
             {
                 "endpoint_summary": test_target.summary,
-                "endpoint_operation": test_target.request_class,
+                "endpoint_operation": f"{test_target.request_class[0].lower()}{test_target.request_class[1:]}",
                 "endpoint_params": f"{test_target.request_class}Params",
                 "endpoint_param_values": test_target.parameter_api_client_call,
                 "endpoint_dependent_param_values": test_target.parameter_dependent_objects,

@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 
 // imports of API-specific classes
-{{#param_class}}
-import { {{.}} } from '../../{{.}}';
-{{/param_class}}
+{{#import_data}}
+import { {{importClass}} } from '../../{{importPackage}}';
+{{/import_data}}
 
 // client path from spec
 const BASE_PATH = 'http://localhost:3001/api/{{api_title_lower}}/{{api_version}}';

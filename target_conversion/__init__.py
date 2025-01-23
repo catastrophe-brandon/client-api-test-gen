@@ -111,6 +111,8 @@ class TestTarget(object):
     response_schema: str
     response_schema_class: str
     parameter_schema: str
+    # The name of the class for the parameter, e.g. CreateBehaviorGroupRequest
+    parameter_class: str
     parameter_api_client_call: str
     parameter_dependent_objects: str
 
@@ -162,6 +164,11 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
         full_spec, req_body_parameters, url_parameters, include_all=include_all
     )
 
+    # Each "Request" object has a "Params" object
+    parameter_class = (
+        get_base_object_from_ref(parameter_schema).removesuffix("Request") + "Params"
+    )
+
     test_target = TestTarget(
         url_path=path_value,
         verb=verb_value,
@@ -173,6 +180,7 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
         response_schema=response_schema,
         response_schema_class=response_schema_class,
         parameter_schema=parameter_schema,
+        parameter_class=parameter_class,
         parameter_api_client_call=api_client_param_str,
         parameter_dependent_objects=dependent_param_str,
     )
@@ -249,33 +257,71 @@ def get_url_embedded_parameters(
     return result
 
 
+def build_param_imports(
+    client_name, api_version, test_targets: list[TestTarget]
+) -> list[dict]:
+    """Build the import data needed for the Param object imports"""
+    import_data = []
+    for test_target in test_targets:
+        # e.g. "NotificationResourceV2CreateBehaviorGroupParams"
+        friendly_operation_id = camel_case(test_target.operation_id.replace("$", ""))
+        import_class = f"{friendly_operation_id}Params"
+        import_package = f"{friendly_operation_id}"
+        import_data.append(
+            {"importClass": import_class, "importPackage": import_package}
+        )
+    return import_data
+
+
+def build_request_imports(
+    client_name, api_version, test_targets: list[TestTarget]
+) -> list[dict]:
+    """
+    Build the import data needed for the Request object imports
+    :return:
+    """
+    import_data = []
+
+    for test_target in test_targets:
+        import_class = f"{test_target.parameter_class}".replace("Params", "Request")
+        import_package = "types"
+        import_data.append(
+            {"importClass": import_class, "importPackage": import_package}
+        )
+    return import_data
+
+
 def build_imports(
-    import_class_prefix: str, test_target_data: list[TestTarget]
-) -> list[str]:
-    """Builds the data to populate the JS imports based on data extracted from the spec"""
-    # Response classes
-    import_names = [
-        f"{import_class_prefix}{x.response_schema_class}"
-        for x in test_target_data
-        if x.response_schema_class != ""
-    ]
-    # Request classes
-    import_names.extend(
-        [
-            f"{import_class_prefix}{y.request_schema_class}"
-            for y in test_target_data
-            if y.request_schema_class != ""
-        ]
-    )
-    # Param classes
-    import_names.extend(
-        [
-            f"{import_class_prefix}{z.request_schema_class}Params"
-            for z in test_target_data
-            if z.request_schema_class != ""
-        ]
-    )
-    return import_names
+    client_name,
+    api_version,
+    import_class_prefix: str,
+    test_target_data: list[TestTarget],
+) -> list[dict]:
+    """
+    Builds the data to populate the JS imports based on data extracted from the spec
+    :returns: a list of string pairs with the name of the class and the name of the source package
+    """
+    # Client class
+    imports = [{"importClass": f"{client_name}Client", "importPackage": "api"}]
+    folder_name_prefix = client_name + "Resource" + api_version.upper()
+    param_imports = build_param_imports(client_name, api_version, test_target_data)
+    request_imports = build_request_imports(client_name, api_version, test_target_data)
+    imports.extend(param_imports)
+    imports.extend(request_imports)
+    return imports
+    # # Request classes
+    # for test_target in test_target_data:
+    #
+    #     if test_target.request_schema_class != "":
+    #         # Request class
+    #         import_package = import_class_prefix + "Resource" + test_target.request_schema_class.removesuffix("Request")
+    #         import_names.append({"importClass": test_target.request_schema_class, "importPackage": import_package})
+    #
+    #         # Param class
+    #         # param_import_class = test_target.request_schema_class.removesuffix("Request") + "Params"
+    #         #import_names.append({"importClass": param_import_class, "importPackage": "types"})
+
+    return imports
 
 
 def dummy_value_for_type(input_type: str):
@@ -362,7 +408,7 @@ def build_param_string(
         # URL parameters first
         for url_param in url_parameters:
             if url_param.schema.get("$ref", None) in CUSTOM_UUID_REFS:
-                url_param_strs.append(f"{url_param.name}: '{uuid.uuid4()}'")
+                url_param_strs.append(f'{url_param.name}: "{uuid.uuid4()}"')
             else:
                 url_param_strs.append(
                     f"{url_param.name}: {dummy_value_for_type(url_param.type)}"
@@ -424,7 +470,6 @@ def render_params_as_string(full_spec, parameters: list[RequestBodyParameter]) -
             param_string = build_dependent_param_string(full_spec, [endpt_param])
             result.append(param_string)
             continue
-            # raise InvalidInputDataError
 
         value = dummy_value_for_type(endpt_param.type)
 
