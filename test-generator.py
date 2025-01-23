@@ -5,7 +5,7 @@ from typing import List
 import chevron
 
 from spec_download import download_specfile, SpecDownloadError
-from target_conversion import build_test_target, build_imports, TestTarget
+from target_conversion import build_test_target, build_imports, ApiClientTarget
 
 
 def render_template(file_path, template_data: dict, dest_file: str | None = None):
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     api_title = spec["info"]["title"]
     api_version = spec["info"]["version"]
-    test_targets: list[TestTarget] = []
+    test_targets: list[ApiClientTarget] = []
 
     # Scan through all the paths and verbs building test target info along the way
     for path in spec["paths"]:

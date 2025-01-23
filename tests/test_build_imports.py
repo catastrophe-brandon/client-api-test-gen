@@ -1,11 +1,11 @@
 from target_conversion import (
     build_imports,
-    TestTarget,
+    ApiClientTarget,
     build_param_imports,
     build_request_imports,
 )
 
-one_test_target = TestTarget(
+one_test_target = ApiClientTarget(
     url_path="/notifications/behaviorGroups",
     verb="post",
     summary="Create a behavior group",

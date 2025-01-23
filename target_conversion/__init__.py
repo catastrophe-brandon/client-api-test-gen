@@ -95,7 +95,7 @@ def get_request_body_parameters_from_ref(
 
 
 @dataclass
-class TestTarget(object):
+class ApiClientTarget(object):
     """
     Represents an individual endpoint to be tested based on info taken from the spec;
     bundles data for substitution into the final Mustache template
@@ -117,7 +117,9 @@ class TestTarget(object):
     parameter_dependent_objects: str
 
 
-def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> TestTarget:
+def build_test_target(
+    full_spec: dict, path_value: str, verb_value: str
+) -> ApiClientTarget:
     """
     Builds a TestTarget based on the information about an endpoint found in the spec
     :param full_spec: dict with all the openapi spec info
@@ -169,7 +171,7 @@ def build_test_target(full_spec: dict, path_value: str, verb_value: str) -> Test
         get_base_object_from_ref(parameter_schema).removesuffix("Request") + "Params"
     )
 
-    test_target = TestTarget(
+    test_target = ApiClientTarget(
         url_path=path_value,
         verb=verb_value,
         summary=lookup_base["summary"],
@@ -258,7 +260,7 @@ def get_url_embedded_parameters(
 
 
 def build_param_imports(
-    client_name, api_version, test_targets: list[TestTarget]
+    client_name, api_version, test_targets: list[ApiClientTarget]
 ) -> list[dict]:
     """Build the import data needed for the Param object imports"""
     import_data = []
@@ -274,7 +276,7 @@ def build_param_imports(
 
 
 def build_request_imports(
-    client_name, api_version, test_targets: list[TestTarget]
+    client_name, api_version, test_targets: list[ApiClientTarget]
 ) -> list[dict]:
     """
     Build the import data needed for the Request object imports
@@ -295,7 +297,7 @@ def build_imports(
     client_name,
     api_version,
     import_class_prefix: str,
-    test_target_data: list[TestTarget],
+    test_target_data: list[ApiClientTarget],
 ) -> list[dict]:
     """
     Builds the data to populate the JS imports based on data extracted from the spec
