@@ -60,5 +60,7 @@ def test_build_imports():
     )
 
     # Confirm the request object imports
+    assert imports_out[2]["importClass"] == "CreateBehaviorGroupRequest"
+    assert imports_out[2]["importPackage"] == "types"
 
     assert len(imports_out) > 0

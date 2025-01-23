@@ -168,7 +168,9 @@ def build_test_target(
 
     # Each "Request" object has a "Params" object
     parameter_class = (
-        get_base_object_from_ref(parameter_schema).removesuffix("Request") + "Params"
+        (get_base_object_from_ref(parameter_schema).removesuffix("Request") + "Params")
+        if parameter_schema != ""
+        else ""
     )
 
     test_target = ApiClientTarget(
@@ -285,11 +287,12 @@ def build_request_imports(
     import_data = []
 
     for test_target in test_targets:
-        import_class = f"{test_target.parameter_class}".replace("Params", "Request")
-        import_package = "types"
-        import_data.append(
-            {"importClass": import_class, "importPackage": import_package}
-        )
+        if test_target.parameter_class != "":
+            import_class = f"{test_target.parameter_class}".replace("Params", "Request")
+            import_package = "types"
+            import_data.append(
+                {"importClass": import_class, "importPackage": import_package}
+            )
     return import_data
 
 
