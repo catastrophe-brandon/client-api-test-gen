@@ -217,6 +217,9 @@ def get_request_body_parameters(
         item_type = req_body_schema.get("type", None)
         item_name = req_body_schema.get("name", None)
         item_items = req_body_schema.get("items", None)
+        # if no name was provided, we default to 'requestBody'
+        if item_name is None:
+            item_name = "requestBody"
         result.append(RequestBodyParameter(item_name, item_type, None, item_items))
 
     return result

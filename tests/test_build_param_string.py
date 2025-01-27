@@ -95,3 +95,21 @@ def test_build_param_string_create_behavior_group():
         == 'const createBehaviorGroupRequest : CreateBehaviorGroupRequest = { displayName: "" };'
     )
     assert result[1] == "createBehaviorGroupRequest"
+
+
+def test_build_param_string_with_unnamed_param():
+    """When spec parameters to not have an explicit name, the value returned should include 'requestBody'"""
+
+    # Example endpoint is "update behavior group actions"
+    spec_path = "/notifications/behaviorGroups/{behaviorGroupId}/actions"
+    spec_verb = "put"
+
+    result = build_param_string(
+        full_spec,
+        req_body_parameters=get_request_body_parameters(
+            full_spec, spec_path, spec_verb
+        ),
+        url_parameters=None,
+    )
+
+    assert "requestBody" in result[1]

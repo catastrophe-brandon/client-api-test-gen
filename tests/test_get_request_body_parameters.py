@@ -20,6 +20,7 @@ def test_get_request_body_parameters():
     assert len(array_parameters) == 1
     assert array_parameters[0].type == "array"
     assert array_parameters[0].aggregate_info is not None
+    assert array_parameters[0].name == "requestBody"
 
     # parameter is a ref
     ref_parameter = get_request_body_parameters(
