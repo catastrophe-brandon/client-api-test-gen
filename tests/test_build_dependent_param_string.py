@@ -11,18 +11,18 @@ full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
 def test_build_dependent_param_string():
     """Build the param string for a dependent parameter and verify the output is correct"""
     ref = "#/components/schemas/CreateBehaviorGroupRequest"
-    dependent_params = [RequestBodyParameter(None, None, ref, None)]
+    dependent_params = [RequestBodyParameter(None, None, ref, None, None)]
     dependant_params_str = build_dependent_param_string(full_spec, dependent_params)
     assert (
         dependant_params_str
-        == 'const createBehaviorGroupRequest : CreateBehaviorGroupRequest = { displayName: "" };'
+        == 'const createBehaviorGroupRequest : CreateBehaviorGroupRequest = { display_name: "" };'
     )
 
 
 def test_build_dependent_param_string_local_time():
     """When the dependent param is local time, verify the output is correct"""
     ref = "#/components/schemas/LocalTime"
-    dependent_params = [RequestBodyParameter(None, None, ref, None)]
+    dependent_params = [RequestBodyParameter(None, None, ref, None, None)]
     dependent_params_str = build_dependent_param_string(
         full_spec, dependent_params, include_all=True
     )
@@ -42,7 +42,11 @@ def test_build_dependant_param_string_multiple_dependent_params():
     """
 
     ref = "#/components/schemas/CreateBehaviorGroupRequest"
-    dependent_params = [RequestBodyParameter(None, None, ref, None)]
+    dependent_params = [
+        RequestBodyParameter(
+            name=None, type=None, ref=ref, unique=False, aggregate_info=None
+        )
+    ]
     dependant_params_str = build_dependent_param_string(
         full_spec, dependent_params, include_all=True
     )

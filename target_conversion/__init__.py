@@ -37,6 +37,7 @@ class RequestBodyParameter(object):
     name: str | None
     type: str | None
     ref: str | None
+    unique: bool | None
     aggregate_info: dict | None
 
 
@@ -79,7 +80,7 @@ def get_request_body_parameters_from_ref(
             optional_or_required_params = list(cur["properties"].keys())
         else:
             # non-object data like a string
-            return [RequestBodyParameter(None, cur["type"], None, None)]
+            return [RequestBodyParameter(None, cur["type"], None, None, None)]
 
     elif has_required:
         # only required parameters
@@ -210,17 +211,28 @@ def get_request_body_parameters(
     if is_ref:
         # do $ref things
         result.append(
-            RequestBodyParameter(None, None, req_body_schema.get("$ref", None), None)
+            RequestBodyParameter(
+                None, None, req_body_schema.get("$ref", None), None, None
+            )
         )
     else:
         # param is a basic type
         item_type = req_body_schema.get("type", None)
+        item_unique = req_body_schema.get("uniqueItems", False)
         item_name = req_body_schema.get("name", None)
         item_items = req_body_schema.get("items", None)
         # if no name was provided, we default to 'requestBody'
         if item_name is None:
             item_name = "requestBody"
-        result.append(RequestBodyParameter(item_name, item_type, None, item_items))
+        result.append(
+            RequestBodyParameter(
+                name=item_name,
+                type=item_type,
+                aggregate_info=item_items,
+                unique=item_unique,
+                ref=None,
+            )
+        )
 
     return result
 
@@ -482,7 +494,8 @@ def render_params_as_string(full_spec, parameters: list[RequestBodyParameter]) -
         value = dummy_value_for_type(endpt_param.type)
 
         if endpt_param.name:
-            name = camel_case(endpt_param.name)
+            # This is tricky
+            name = endpt_param.name
             name = f"{name[0].lower()}{name[1:]}"
             result.append(f"{name}: {value}")
         else:
@@ -493,13 +506,14 @@ def render_params_as_string(full_spec, parameters: list[RequestBodyParameter]) -
 def copy_parameter_data(name: str, parameter_data: dict) -> RequestBodyParameter:
     """Takes request body parameter from the spec and copies it into a RequestBodyParameter object"""
     ref = parameter_data.get("$ref", None)
+    unique = parameter_data.get("uniqueItems", False)
     aggregate_info = (
         parameter_data.get("items", None)
         if parameter_data.get("type", None) == "array"
         else None
     )
     return RequestBodyParameter(
-        name, parameter_data.get("type", None), ref, aggregate_info
+        name, parameter_data.get("type", None), ref, unique, aggregate_info
     )
 
 

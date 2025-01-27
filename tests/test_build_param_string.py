@@ -17,6 +17,7 @@ def test_build_dependent_param_string():
         name=None,
         type=None,
         ref="#/components/schemas/UpdateBehaviorGroupRequest",
+        unique=False,
         aggregate_info=None,
     )
 
@@ -92,7 +93,7 @@ def test_build_param_string_create_behavior_group():
     )
     assert (
         result[0]
-        == 'const createBehaviorGroupRequest : CreateBehaviorGroupRequest = { displayName: "" };'
+        == 'const createBehaviorGroupRequest : CreateBehaviorGroupRequest = { display_name: "" };'
     )
     assert result[1] == "createBehaviorGroupRequest"
 

@@ -34,3 +34,21 @@ def test_get_request_body_parameters():
         full_spec, "/notifications/facets/bundles", "get"
     )
     assert len(no_params) == 0
+
+
+def test_get_request_body_parameters_unnamed():
+    """
+    Get request body parameters for an endpoint that has "unnamed" parameters
+    :return:
+    """
+
+    spec_path = "/notifications/behaviorGroups/{behaviorGroupId}/actions"
+    spec_verb = "put"
+
+    full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
+    req_body_params = get_request_body_parameters(full_spec, spec_path, spec_verb)
+    assert len(req_body_params) == 1
+    assert req_body_params[0].unique is False
+
+    # Now the case where unique is True
+    # TODO
