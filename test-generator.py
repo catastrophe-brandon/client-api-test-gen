@@ -80,6 +80,7 @@ if __name__ == "__main__":
         "api_title_lower": api_title.lower(),
         "api_version": api_version,
         "import_data": import_classes,
+        "port": 3002,
         "test_data": [
             {
                 "endpoint_summary": test_target.summary,

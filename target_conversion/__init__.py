@@ -333,24 +333,10 @@ def build_imports(
     """
     # Client class
     imports = [{"importClass": f"{client_name}Client", "importPackage": "api"}]
-    folder_name_prefix = client_name + "Resource" + api_version.upper()
     param_imports = build_param_imports(client_name, api_version, test_target_data)
     request_imports = build_request_imports(client_name, api_version, test_target_data)
     imports.extend(param_imports)
     imports.extend(request_imports)
-    return imports
-    # # Request classes
-    # for test_target in test_target_data:
-    #
-    #     if test_target.request_schema_class != "":
-    #         # Request class
-    #         import_package = import_class_prefix + "Resource" + test_target.request_schema_class.removesuffix("Request")
-    #         import_names.append({"importClass": test_target.request_schema_class, "importPackage": import_package})
-    #
-    #         # Param class
-    #         # param_import_class = test_target.request_schema_class.removesuffix("Request") + "Params"
-    #         #import_names.append({"importClass": param_import_class, "importPackage": "types"})
-
     return imports
 
 
