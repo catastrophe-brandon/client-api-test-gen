@@ -33,10 +33,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--out_file", help="File to write the generated test source to", required=False
     )
-
+    parser.add_argument(
+        "--port", help="Destination port for the API client requests", default=3001
+    )
     args = parser.parse_args()
     spec_url = args.spec_url.strip("'")
     out_file = args.out_file
+    port = args.port
 
     print(f"Spec url given was: {spec_url}")
     print(f"Output file is: {out_file}")
@@ -80,7 +83,7 @@ if __name__ == "__main__":
         "api_title_lower": api_title.lower(),
         "api_version": api_version,
         "import_data": import_classes,
-        "port": 3002,
+        "port": port,
         "test_data": [
             {
                 "endpoint_summary": test_target.summary,
