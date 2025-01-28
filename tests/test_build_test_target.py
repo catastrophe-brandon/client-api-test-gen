@@ -38,6 +38,9 @@ def test_build_test_target_both_embedded_and_request_body():
     # Default value for an array type without a named parameter is empty array
     assert "[]" in target.parameter_api_client_call
 
+    # Check the expected response code
+    assert target.expected_response == "200"
+
 
 def test_build_test_target_neither():
     """Build a test target that has no parameters"""

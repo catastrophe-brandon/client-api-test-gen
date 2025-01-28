@@ -113,4 +113,4 @@ def test_build_param_string_with_unnamed_param():
         url_parameters=None,
     )
 
-    assert "requestBody" in result[1]
+    assert 'requestBody: new Set([""])' in result[1]

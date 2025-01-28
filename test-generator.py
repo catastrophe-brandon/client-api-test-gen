@@ -1,6 +1,5 @@
 import argparse
 import os
-from typing import List
 
 import chevron
 
@@ -19,9 +18,6 @@ def render_template(file_path, template_data: dict, dest_file: str | None = None
             # No file? -> stdout
             print(rendered_template)
 
-
-# TODO: Make this an enum for future use?
-valid_types = ["number", "string", "boolean", "array", "object"]
 
 if __name__ == "__main__":
 
@@ -91,6 +87,7 @@ if __name__ == "__main__":
                 "endpoint_params": f"{test_target.request_class}Params",
                 "endpoint_param_values": test_target.parameter_api_client_call,
                 "endpoint_dependent_param_values": test_target.parameter_dependent_objects,
+                "expected_response": test_target.expected_response,
             }
             for test_target in test_targets
         ],

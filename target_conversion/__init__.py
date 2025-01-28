@@ -116,6 +116,7 @@ class ApiClientTarget(object):
     parameter_class: str
     parameter_api_client_call: str
     parameter_dependent_objects: str
+    expected_response: str
 
 
 def build_test_target(
@@ -174,6 +175,14 @@ def build_test_target(
         else ""
     )
 
+    # Grab the response code
+    expected_response = "999"
+    response_codes = lookup_base["responses"].keys()
+    for code in response_codes:
+        if code.startswith("2"):
+            expected_response = code
+            break
+
     test_target = ApiClientTarget(
         url_path=path_value,
         verb=verb_value,
@@ -188,6 +197,7 @@ def build_test_target(
         parameter_class=parameter_class,
         parameter_api_client_call=api_client_param_str,
         parameter_dependent_objects=dependent_param_str,
+        expected_response=expected_response,
     )
     return test_target
 
@@ -344,11 +354,13 @@ def build_imports(
     return imports
 
 
-def dummy_value_for_type(input_type: str):
+def dummy_value_for_type(input_type: str, unique=False):
     """Given a type from the spec, return a default value that can be used as parameter input"""
     # Use faker to produce realistic data?
-    # assert input_type in ["array", "boolean", "string", "number"]
     if input_type == "array":
+        if unique:
+            # Baked-in assumption that arrays are string; might need to rework this later
+            return "new Set<string>()"
         return "[]"
     elif input_type == "boolean":
         return "true"
@@ -455,12 +467,12 @@ def build_param_string(
                 else:
                     if req_body_param.name is not None:
                         req_param_strs.append(
-                            f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type)}"
+                            f"{req_body_param.name}: {dummy_value_for_type(req_body_param.type, req_body_param.unique)}"
                         )
                     else:
                         # ref is None and name is None
                         req_param_strs.append(
-                            f"{dummy_value_for_type(req_body_param.type)}"
+                            f"{dummy_value_for_type(req_body_param.type, req_body_param.unique)}"
                         )
 
     # handle "dependent" parameters
@@ -491,7 +503,7 @@ def render_params_as_string(full_spec, parameters: list[RequestBodyParameter]) -
             result.append(param_string)
             continue
 
-        value = dummy_value_for_type(endpt_param.type)
+        value = dummy_value_for_type(endpt_param.type, unique=endpt_param.unique)
 
         if endpt_param.name:
             # This is tricky

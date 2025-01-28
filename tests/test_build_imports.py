@@ -20,6 +20,7 @@ one_test_target = ApiClientTarget(
     parameter_api_client_call="createBehaviorGroupRequest",
     parameter_dependent_objects="const createBehaviorGroupRequest : "
     'CreateBehaviorGroupRequest = { displayName: "" };',
+    expected_response="200",
 )
 
 
