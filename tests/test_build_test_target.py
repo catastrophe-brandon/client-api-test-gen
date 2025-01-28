@@ -36,7 +36,7 @@ def test_build_test_target_both_embedded_and_request_body():
     assert "" in target.parameter_dependent_objects
     assert "eventTypeId:" in target.parameter_api_client_call
     # Default value for an array type without a named parameter is empty array
-    assert "[]" in target.parameter_api_client_call
+    assert "new Set<string>()" in target.parameter_api_client_call
 
     # Check the expected response code
     assert target.expected_response == "200"
