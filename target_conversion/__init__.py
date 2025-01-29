@@ -268,7 +268,7 @@ def build_imports(
 
 def request_body_parameter_as_string(request_body_param: RequestBodyParameter) -> str:
     """
-    Convert RequestBodyParamter object to a string like "name: value"
+    Convert RequestBodyParameter object to a string like "name: value"
     :param request_body_param:
     :return:
     """
@@ -392,6 +392,8 @@ def build_param_string(
                     )
                     # Resolved items do not need to have a class imported
                     resolved.append(get_base_object_from_ref(req_body_param.ref))
+                    # Nasty hack to match the generator
+                    resolved_req_body_param[0].name = "body"
                     req_param_strs.append(
                         request_body_parameter_as_string(resolved_req_body_param[0])
                     )
