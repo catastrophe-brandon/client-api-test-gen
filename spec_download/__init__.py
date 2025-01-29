@@ -30,4 +30,5 @@ class SpecDownloadError(Exception):
 
 
 def convert_yaml_to_json(file_data: str) -> dict:
+    """Convert a YAML spec file to a JSON spec file"""
     raise NotImplementedError

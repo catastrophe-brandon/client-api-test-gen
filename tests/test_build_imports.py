@@ -1,11 +1,11 @@
 from target_conversion import (
     build_imports,
-    TestTarget,
+    ApiClientTarget,
     build_param_imports,
     build_request_imports,
 )
 
-one_test_target = TestTarget(
+one_test_target = ApiClientTarget(
     url_path="/notifications/behaviorGroups",
     verb="post",
     summary="Create a behavior group",
@@ -20,6 +20,8 @@ one_test_target = TestTarget(
     parameter_api_client_call="createBehaviorGroupRequest",
     parameter_dependent_objects="const createBehaviorGroupRequest : "
     'CreateBehaviorGroupRequest = { displayName: "" };',
+    expected_response="200",
+    resolved_params=[],
 )
 
 
@@ -60,5 +62,7 @@ def test_build_imports():
     )
 
     # Confirm the request object imports
+    assert imports_out[2]["importClass"] == "CreateBehaviorGroupRequest"
+    assert imports_out[2]["importPackage"] == "types"
 
     assert len(imports_out) > 0

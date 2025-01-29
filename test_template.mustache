@@ -6,7 +6,7 @@ import { {{importClass}} } from '../../{{importPackage}}';
 {{/import_data}}
 
 // client path from spec
-const BASE_PATH = 'http://localhost:3001/api/{{api_title_lower}}/{{api_version}}';
+const BASE_PATH = 'http://localhost:{{port}}/api/{{api_title_lower}}/{{api_version}}';
 
 const client = {{api_title}}Client(BASE_PATH);
 
@@ -17,7 +17,7 @@ describe('{{api_title}} {{api_version}}', () => {
         {{{ endpoint_dependent_param_values }}}
         const params: {{endpoint_params}} = { {{{endpoint_param_values}}} };
         const resp = await client.{{endpoint_operation}}(params);
-        expect(resp.status).toBe(200);
+        expect(resp.status).toBe({{expected_response}});
     });
 {{/test_data}}
 });
