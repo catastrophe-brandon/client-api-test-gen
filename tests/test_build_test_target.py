@@ -21,10 +21,10 @@ def test_build_test_target_request_body_only():
     spec_verb = "put"
 
     target = build_test_target(full_spec, spec_path, spec_verb)
-    # parameter values is the string substituted directly into the api client function call
-    # In this case localTime is a parameter that requires a dependent object
-    assert "const localTime : LocalTime" in target.parameter_dependent_objects
-    assert target.parameter_api_client_call == "localTime"
+    # When a dependent parameter is a basic type, we collapse the parameter into the client call instead
+    # of creating a dependent parameter
+    assert target.parameter_dependent_objects == ""
+    assert '"13:45:30.123456789"' in target.parameter_api_client_call
 
 
 def test_build_test_target_both_embedded_and_request_body():

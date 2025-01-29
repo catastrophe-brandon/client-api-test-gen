@@ -4,9 +4,10 @@ from target_conversion import (
     get_request_body_parameters,
     get_url_embedded_parameters,
     build_param_string,
-    RequestBodyParameter,
     build_dependent_param_string,
 )
+
+from target_conversion.data_modeling import RequestBodyParameter
 
 full_spec = json.load(open("./tests/data/notif_v2_spec.json"))
 
@@ -19,6 +20,7 @@ def test_build_dependent_param_string():
         ref="#/components/schemas/UpdateBehaviorGroupRequest",
         unique=False,
         aggregate_info=None,
+        example=None,
     )
 
     dependent_param_str = build_dependent_param_string(full_spec, [dependent_param])
@@ -44,7 +46,7 @@ def test_build_param_string():
 
     result = build_param_string(full_spec, req_body_params, url_embedded_params)
     # Confirm the request object was instantiated
-    assert len(result) == 2
+    assert len(result) == 3
     assert (
         result[0]
         == "const updateBehaviorGroupRequest : UpdateBehaviorGroupRequest = {  };"
@@ -114,3 +116,20 @@ def test_build_param_string_with_unnamed_param():
     )
 
     assert "requestBody: []" in result[1]
+
+
+def test_build_param_string_with_local_time():
+
+    spec_path = "/org-config/daily-digest/time-preference"
+    spec_verb = "put"
+
+    result = build_param_string(
+        full_spec,
+        req_body_parameters=get_request_body_parameters(
+            full_spec, spec_path, spec_verb
+        ),
+        url_parameters=None,
+        include_all=True,
+    )
+    assert result[0] == ""
+    assert result[1] == 'localTime: "13:45:30.123456789"'

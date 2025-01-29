@@ -51,8 +51,6 @@ if __name__ == "__main__":
         print(f"Error downloading spec from {spec_url}")
         exit(1)
 
-    # TODO: if spec was YAML, convert it to JSON before proceeding
-
     template_file = "test_template.mustache"
     if not os.path.isfile(template_file):
         print(f"{template_file} is not a file")
@@ -62,18 +60,21 @@ if __name__ == "__main__":
     api_version = spec["info"]["version"]
     test_targets: list[ApiClientTarget] = []
 
+    resolved_deps = []
     # Scan through all the paths and verbs building test target info along the way
     for path in spec["paths"]:
         verbs = list(spec["paths"][path].keys())
         for verb in verbs:
-            test_targets.append(build_test_target(spec, path, verb))
+            test_tgt_out = build_test_target(spec, path, verb)
+            resolved_deps.extend(test_tgt_out.resolved_params)
+            test_targets.append(test_tgt_out)
 
     api_prefix = f"{api_title}Resource{api_version.upper().rstrip('.0')}"
     import_classes = build_imports(
         api_title,
         api_version=f"{api_version.upper().rstrip('.0')}",
-        import_class_prefix=api_prefix,
         test_target_data=test_targets,
+        resolved=resolved_deps,
     )
 
     print("Rendering the data into the template ...")
@@ -101,3 +102,5 @@ if __name__ == "__main__":
         print("Success!")
     else:
         print(f"Success! Test source written to {out_file}")
+
+    print("You may want to run a linter or formatter against the generated source")
